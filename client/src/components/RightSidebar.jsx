@@ -1,25 +1,47 @@
 import React from 'react';
-import assets, { messagesDummyData } from '../assets/assets';
+import assets from '../assets/assets';
 
 const RightSidebar = ({ selectedUser, messages }) => {
   if (!selectedUser) return null;
 
-  const userMessages = messages.filter(msg => msg.senderId === selectedUser._id || msg.receiverId === selectedUser._id);
+  const userMedia = messages.filter(
+    msg =>
+      (msg.senderId === selectedUser._id || msg.receiverId === selectedUser._id) && msg.image
+  );
 
   return (
-    <div className="bg-[#8185B2]/10 h-full p-5 rounded-l-xl overflow-y-auto text-white">
-      <div className="flex flex-col items-center">
-        <img src={selectedUser.profilePic || assets.avatar_icon} alt={selectedUser.fullName} className="w-16 aspect-[1/1] rounded-full" />
-        <h2 className="mt-3 text-lg font-semibold">{selectedUser.fullName}</h2>
-        <p className="text-xs text-gray-400 text-center">{selectedUser.bio}</p>
+    <div className="bg-[#282142]/80 p-4 flex flex-col gap-5 overflow-y-auto">
+      {/* User Info */}
+      <div className="flex flex-col items-center gap-2">
+        <img src={selectedUser.profilePic} alt={selectedUser.fullName} className="w-16 rounded-full" />
+        <p className="text-white font-medium">{selectedUser.fullName}</p>
+        <p className="text-gray-400 text-sm text-center">{selectedUser.bio}</p>
       </div>
 
-      <h3 className="mt-6 mb-2 text-sm font-medium">Media Shared</h3>
-      <div className="grid grid-cols-2 gap-2">
-        {userMessages.map((msg, idx) => msg.image && (
-          <img key={idx} src={msg.image} alt="media" className="w-full h-20 object-cover rounded-lg" />
-        ))}
+      {/* Shared Media */}
+      <div>
+        <p className="text-gray-300 font-semibold mb-2">Shared Media</p>
+        <div className="flex flex-wrap gap-2">
+          {userMedia.length > 0 ? (
+            userMedia.map((msg, idx) => (
+              <a key={idx} href={msg.image} target="_blank" rel="noopener noreferrer">
+                <img
+                  src={msg.image}
+                  alt="media"
+                  className="w-20 h-20 object-cover rounded-lg cursor-pointer"
+                />
+              </a>
+            ))
+          ) : (
+            <p className="text-gray-500 text-sm">No media shared</p>
+          )}
+        </div>
       </div>
+
+      {/* Logout Button */}
+      <button className="mt-auto bg-violet-500 text-white py-2 rounded-lg hover:bg-violet-600 transition">
+        Logout
+      </button>
     </div>
   );
 };
