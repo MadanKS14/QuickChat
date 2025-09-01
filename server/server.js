@@ -7,6 +7,8 @@ import userRouter from "./routes/userRoutes.js";
 import messageRouter from "./routes/messageRoutes.js";
 import { Server } from "socket.io";
 import authRouter from "./routes/authRouter.js";
+import jwt from "jsonwebtoken";
+
 
 const app = express();
 const server = http.createServer(app);
@@ -52,7 +54,7 @@ app.use(cors());
 // --- API Routes ---
 app.use("/api/status", (req, res) => res.send("Server is live"));
 app.use("/api/auth", authRouter);
-app.use("/api/users", userRouter);
+app.use("/api/user", userRouter);
 app.use("/api/messages", messageRouter);
 
 // --- Database & Server ---
