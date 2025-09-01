@@ -100,8 +100,8 @@ const ProfilePage = () => {
                     </button>
                 </form>
                 <div className="p-6">
-                    <img src={assets.logo_big} alt="Logo" className="w-[min(30vw,200px)]" />
-                </div>
+
+                    <img src={authUser?.profilePic || assets.logo_big} alt="Logo" className='max-w-44 aspect-square rounded-full object-cover mx-10 max-sm:mt-10' />                </div>
             </div>
         </div>
     );

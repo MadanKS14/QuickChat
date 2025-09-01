@@ -2,6 +2,7 @@ import React from 'react';
 import assets from '../assets/assets';
 
 const RightSidebar = ({ selectedUser, messages }) => {
+  
   if (!selectedUser) return null;
 
   const userMedia = messages.filter(
