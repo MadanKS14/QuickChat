@@ -1,113 +1,111 @@
-import React, { useContext, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import assets from "../assets/assets";
-import { AuthContext } from "../../context/AuthContext";
-
+import { useAuth } from "../../context/AuthContext";
 const ProfilePage = () => {
-  const { authUser, updateProfile } = useContext(AuthContext);
-  const [selectedImg, setSelectedImg] = useState(null);
-  const [name, setName] = useState(authUser?.fullName || "");
-  const [bio, setBio] = useState(authUser?.bio || "");
-  const navigate = useNavigate();
+    // Get user data and the update function from the context
+    const { authUser, updateProfile } = useAuth();
+    const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+    // State for form inputs
+    const [selectedImg, setSelectedImg] = useState(null);
+    const [fullName, setFullName] = useState("");
+    const [bio, setBio] = useState("");
 
-    let profilePicBase64 = null;
+    // Use an effect to populate the form with the user's data once it's loaded
+    useEffect(() => {
+        if (authUser) {
+            setFullName(authUser.fullName);
+            setBio(authUser.bio);
+        }
+    }, [authUser]);
 
-    if (selectedImg) {
-      const reader = new FileReader();
-      reader.readAsDataURL(selectedImg);
+    const handleSubmit = async (e) => {
+        e.preventDefault();
 
-      reader.onloadend = async () => {
-        profilePicBase64 = reader.result;
-        await saveProfile(profilePicBase64);
-      };
-    } else {
-      await saveProfile();
-    }
-  };
+        const saveProfile = async (profilePicBase64 = null) => {
+            const profileData = { fullName, bio };
+            // Only add the profilePic to the data if a new one has been selected
+            if (profilePicBase64) {
+                profileData.profilePic = profilePicBase64;
+            }
+            await updateProfile(profileData);
+            navigate("/"); // Navigate home after the profile is successfully updated
+        };
 
-  const saveProfile = async (profilePic) => {
-    try {
-      await updateProfile({
-        fullName: name,
-        bio,
-        profilePic,
-      });
-      navigate("/"); // ✅ Navigate to Home after saving
-    } catch (err) {
-      console.error(err);
-    }
-  };
+        if (selectedImg) {
+            // If a new image is selected, convert it to a base64 string first
+            const reader = new FileReader();
+            reader.readAsDataURL(selectedImg);
+            reader.onloadend = () => {
+                saveProfile(reader.result);
+            };
+        } else {
+            // If no new image, save the other profile data
+            saveProfile();
+        }
+    };
 
-  return (
-    <div
-      className="min-h-screen bg-cover bg-center flex items-center justify-center relative"
-      style={{ backgroundImage: `url(${assets.bgImage})` }}
-    >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-md"></div>
-
-      <div className="relative w-5/6 max-w-2xl backdrop-blur-2xl text-gray-300 border-2 border-gray-600 flex items-center justify-between max-sm:flex-col-reverse rounded-lg shadow-lg">
-        <form
-          className="flex flex-col gap-5 p-10 flex-1"
-          onSubmit={handleSubmit}
+    return (
+        <div
+            className="min-h-screen bg-cover bg-center flex items-center justify-center relative p-4"
+            style={{ backgroundImage: `url(${assets.bgImage})` }}
         >
-          <h3 className="text-lg font-semibold text-white">Profile Details</h3>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-md"></div>
 
-          <label htmlFor="avatar" className="flex items-center gap-3 cursor-pointer">
-            <input
-              onChange={(e) => setSelectedImg(e.target.files[0])}
-              type="file"
-              id="avatar"
-              accept=".png, .jpg, .jpeg"
-              hidden
-            />
-            <img
-              src={
-                selectedImg
-                  ? URL.createObjectURL(selectedImg)
-                  : authUser?.profilePic || assets.avatar_icon
-              }
-              alt="Avatar"
-              className={`w-16 h-16 rounded-full border-2 border-gray-400 object-cover ${
-                selectedImg ? "shadow-lg" : ""
-              }`}
-            />
-            <span className="text-sm text-gray-200">
-              {selectedImg ? "Change Photo" : "Upload Photo"}
-            </span>
-          </label>
-
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Your Name"
-            className="p-3 rounded-lg bg-white/20 placeholder-gray-300 text-white outline-none"
-            required
-          />
-          <textarea
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            placeholder="Write something about yourself..."
-            rows={3}
-            className="p-3 rounded-lg bg-white/20 placeholder-gray-300 text-white outline-none resize-none"
-            required
-          ></textarea>
-
-          <button
-            type="submit"
-            className="p-3 rounded-lg bg-violet-500 hover:bg-violet-600 transition-colors text-white font-medium"
-          >
-            Save & Continue
-          </button>
-        </form>
-
-        <img src={assets.logo_big} alt="Logo" className="w-[min(30vw,200px)] p-6" />
-      </div>
-    </div>
-  );
+            <div className="relative w-full max-w-2xl bg-black/20 text-gray-300 border border-white/10 flex flex-col sm:flex-row items-center justify-between rounded-lg shadow-lg backdrop-blur-xl">
+                <form
+                    className="flex flex-col gap-5 p-8 flex-1 w-full"
+                    onSubmit={handleSubmit}
+                >
+                    <h3 className="text-lg font-semibold text-white">Profile Details</h3>
+                    <label htmlFor="avatar" className="flex items-center gap-4 cursor-pointer">
+                        <input
+                            onChange={(e) => setSelectedImg(e.target.files[0])}
+                            type="file"
+                            id="avatar"
+                            accept=".png, .jpg, .jpeg"
+                            hidden
+                        />
+                        <img
+                            src={selectedImg ? URL.createObjectURL(selectedImg) : authUser?.profilePic || assets.avatar_icon}
+                            alt="Avatar"
+                            className="w-16 h-16 rounded-full border-2 border-gray-400 object-cover"
+                        />
+                        <span className="text-sm text-gray-200 hover:text-white">
+                            {selectedImg ? "Change Photo" : "Upload Photo"}
+                        </span>
+                    </label>
+                    <input
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="Your Name"
+                        className="p-3 rounded-lg bg-white/10 placeholder-gray-400 text-white outline-none focus:ring-2 focus:ring-purple-500"
+                        required
+                    />
+                    <textarea
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                        placeholder="Write something about yourself..."
+                        rows={3}
+                        className="p-3 rounded-lg bg-white/10 placeholder-gray-400 text-white outline-none resize-none focus:ring-2 focus:ring-purple-500"
+                        required
+                    ></textarea>
+                    <button
+                        type="submit"
+                        className="p-3 rounded-lg bg-violet-500 hover:bg-violet-600 transition-colors text-white font-medium"
+                    >
+                        Save & Continue
+                    </button>
+                </form>
+                <div className="p-6">
+                    <img src={assets.logo_big} alt="Logo" className="w-[min(30vw,200px)]" />
+                </div>
+            </div>
+        </div>
+    );
 };
 
 export default ProfilePage;
+
