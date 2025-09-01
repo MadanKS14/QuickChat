@@ -3,12 +3,11 @@ import "dotenv/config";
 import cors from "cors";
 import http from "http";
 import { connectDB } from "./lib/db.js";
-import userRouter from "./routes/userRoutes.js";
-import messageRouter from "./routes/messageRoutes.js";
+import authRouter from "./routes/authRouter.js"; 
+import userRouter from "./routes/userRoutes.js";   
+import messageRouter from "./routes/messageRoutes.js"; 
 import { Server } from "socket.io";
-import authRouter from "./routes/authRouter.js";
 import jwt from "jsonwebtoken";
-
 
 const app = express();
 const server = http.createServer(app);
@@ -54,7 +53,7 @@ app.use(cors());
 // --- API Routes ---
 app.use("/api/status", (req, res) => res.send("Server is live"));
 app.use("/api/auth", authRouter);
-app.use("/api/user", userRouter);
+app.use("/api/users", userRouter); // Corrected to plural "users" to match frontend
 app.use("/api/messages", messageRouter);
 
 // --- Database & Server ---
