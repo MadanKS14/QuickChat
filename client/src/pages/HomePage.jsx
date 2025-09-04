@@ -18,15 +18,10 @@ const HomePage = () => {
         }`}
       >
         {/* Sidebar */}
-        <Sidebar selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
+        <Sidebar  />
 
         {/* Chat Container */}
-        <ChatContainer
-          selectedUser={selectedUser}
-          setSelectedUser={setSelectedUser}
-          messages={messages}
-          setMessages={setMessages}
-        />
+        <ChatContainer/>
 
         {/* Right Sidebar */}
         {selectedUser && <RightSidebar selectedUser={selectedUser} messages={messages} />}

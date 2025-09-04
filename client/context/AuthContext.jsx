@@ -11,12 +11,12 @@ export const useAuth = () => {
 };
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-// We don't need to set a default baseURL for axios when using the Vite proxy.
-// API requests will be relative (e.g., /api/auth/login) and forwarded by Vite.
 
 export const AuthProvider = ({ children }) => {
     const [authUser, setAuthUser] = useState(null);
     const [socket, setSocket] = useState(null);
+    const [onlineUsers, setOnlineUsers] = useState([]);
+    const [isSocketConnected, setIsSocketConnected] = useState(false); // Our "green light" state
     const navigate = useNavigate();
 
     const setAxiosToken = (token) => {
@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
             if (data.success) {
                 localStorage.setItem("quickchat_token", data.token);
                 setAxiosToken(data.token);
-                setAuthUser(data.userData); // Corrected from data.user to data.userData
+                setAuthUser(data.userData);
                 toast.success(data.message);
                 navigate("/");
             } else {
@@ -49,13 +49,14 @@ export const AuthProvider = ({ children }) => {
             socket.disconnect();
             setSocket(null);
         }
+        setIsSocketConnected(false); // Turn off the green light
         toast.success("Logged out successfully");
         navigate("/login");
     };
 
     const updateProfile = async (profileData) => {
         try {
-            const { data } = await axios.put("/api/users/update-profile", profileData);
+            const { data } = await axios.put("/api/users/update", profileData);
             if (data.success) {
                 setAuthUser(data.userData);
                 toast.success(data.message);
@@ -64,20 +65,28 @@ export const AuthProvider = ({ children }) => {
             toast.error(error.response?.data?.message || "Failed to update profile.");
         }
     };
-
+    
     useEffect(() => {
         const token = localStorage.getItem("quickchat_token");
         if (authUser && token && !socket) {
             const newSocket = io(backendUrl, { auth: { token } });
-            setSocket(newSocket);
-            newSocket.on("connect", () => console.log("Socket connected:", newSocket.id));
-            newSocket.on("disconnect", () => console.log("Socket disconnected"));
+            
+            newSocket.on("connect", () => {
+                console.log("Socket connected successfully:", newSocket.id);
+                setSocket(newSocket);
+                setIsSocketConnected(true); // Green light is ON
+            });
+
+            newSocket.on("getOnlineUsers", (users) => setOnlineUsers(users));
+            newSocket.on("disconnect", () => {
+                console.log("Socket disconnected");
+                setSocket(null);
+                setIsSocketConnected(false); // Green light is OFF
+            });
+
             return () => newSocket.close();
-        } else if (!authUser && socket) {
-            socket.close();
-            setSocket(null);
         }
-    }, [authUser, socket]);
+    }, [authUser]);
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -94,7 +103,7 @@ export const AuthProvider = ({ children }) => {
         checkAuth();
     }, []);
 
-    const value = { authUser, login, logout, updateProfile, socket, axios };
+    const value = { authUser, login, logout, updateProfile, socket, onlineUsers, isSocketConnected };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

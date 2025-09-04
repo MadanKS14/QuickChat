@@ -51,9 +51,8 @@ app.use(express.json({ limit: "4mb" }));
 app.use(cors());
 
 // --- API Routes ---
-app.use("/api/status", (req, res) => res.send("Server is live"));
 app.use("/api/auth", authRouter);
-app.use("/api/users", userRouter); // Corrected to plural "users" to match frontend
+app.use("/api/users", userRouter); // This path is correct for the frontend
 app.use("/api/messages", messageRouter);
 
 // --- Database & Server ---
@@ -68,3 +67,4 @@ const startServer = async () => {
 };
 
 startServer();
+
