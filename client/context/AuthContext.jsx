@@ -1,7 +1,7 @@
-import { createContext, useState, useEffect, useContext } from "react";
-import axios from "axios";
+import { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
 import { io } from "socket.io-client";
-import toast from "react-hot-toast";
+import toast from 'react-hot-toast';
 
 export const AuthContext = createContext();
 
@@ -9,41 +9,49 @@ export const useAuth = () => {
     return useContext(AuthContext);
 };
 
+// This refinement makes the backend URL configuration more robust.
+const axiosInstance = axios.create({
+    baseURL: `${import.meta.env.VITE_BACKEND_URL || ''}/api`,
+});
+
 export const AuthProvider = ({ children }) => {
-    const [authUser, setAuthUser] = useState(JSON.parse(localStorage.getItem("chat-user")) || null);
-    const [token, setToken] = useState(localStorage.getItem("chat-token") || null);
+    const [authUser, setAuthUser] = useState(null);
     const [socket, setSocket] = useState(null);
     const [onlineUsers, setOnlineUsers] = useState([]);
-    
-    // --- THIS IS THE FIX ---
-    // The baseURL should be '/api' so that it correctly prefixes all API calls.
-    // e.g., /api + /auth/login = /api/auth/login
-    // e.g., /api + /messages/users = /api/messages/users
-    const axiosInstance = axios.create({
-        baseURL: "/api",
-    });
+    const [loading, setLoading] = useState(true);
 
-    // This effect correctly sets the auth token for all subsequent requests
     useEffect(() => {
-        if (token) {
-            axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-        } else {
-            delete axiosInstance.defaults.headers.common["Authorization"];
+        const interceptor = axiosInstance.interceptors.request.use(
+            (config) => {
+                const user = JSON.parse(localStorage.getItem("chat-user"));
+                const token = user?.token;
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`;
+                }
+                return config;
+            },
+            (error) => Promise.reject(error)
+        );
+
+        const storedUser = localStorage.getItem("chat-user");
+        if (storedUser) {
+            setAuthUser(JSON.parse(storedUser));
         }
-    }, [token, axiosInstance.defaults.headers.common]);
+        setLoading(false);
 
-    // This effect correctly establishes the secure socket connection
+        return () => axiosInstance.interceptors.request.eject(interceptor);
+    }, []);
+
     useEffect(() => {
-        if (authUser && token) {
-            const newSocket = io("http://localhost:5000", {
-                auth: { token },
+        if (authUser) {
+            const newSocket = io(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000", {
+                auth: { token: authUser.token },
             });
+
             setSocket(newSocket);
 
-            newSocket.on("getOnlineUsers", (users) => setOnlineUsers(users));
-
-            newSocket.on("connect_error", (err) => {
-                toast.error(`Socket connection failed: ${err.message}`);
+            newSocket.on("getOnlineUsers", (users) => {
+                setOnlineUsers(users);
             });
 
             return () => newSocket.close();
@@ -53,62 +61,49 @@ export const AuthProvider = ({ children }) => {
                 setSocket(null);
             }
         }
-    }, [authUser, token]);
+    }, [authUser]);
 
     const login = async (credentials) => {
         try {
             const { data } = await axiosInstance.post("/auth/login", credentials);
             if (data.success) {
-                setAuthUser(data.userData);
-                setToken(data.token);
-                localStorage.setItem("chat-user", JSON.stringify(data.userData));
-                localStorage.setItem("chat-token", data.token);
-                toast.success(data.message);
+                const userData = { ...data.userData, token: data.token };
+                localStorage.setItem("chat-user", JSON.stringify(userData));
+                setAuthUser(userData);
+                toast.success("Login successful!");
             }
         } catch (error) {
-            toast.error(error?.response?.data?.message || "Login failed");
+            toast.error(error.response?.data?.message || "Login failed");
             throw error;
         }
     };
 
-    const signup = async (userData) => {
+    const signup = async (credentials) => {
         try {
-            const { data } = await axiosInstance.post("/auth/signup", userData);
+             const { data } = await axiosInstance.post("/auth/signup", credentials);
             if (data.success) {
-                setAuthUser(data.userData);
-                setToken(data.token);
-                localStorage.setItem("chat-user", JSON.stringify(data.userData));
-                localStorage.setItem("chat-token", data.token);
-                toast.success(data.message);
+                const userData = { ...data.userData, token: data.token };
+                localStorage.setItem("chat-user", JSON.stringify(userData));
+                setAuthUser(userData);
+                toast.success("Account created successfully!");
             }
         } catch (error) {
-            toast.error(error?.response?.data?.message || "Signup failed");
+            toast.error(error.response?.data?.message || "Signup failed");
             throw error;
         }
     };
 
     const logout = () => {
-        setAuthUser(null);
-        setToken(null);
         localStorage.removeItem("chat-user");
-        localStorage.removeItem("chat-token");
+        setAuthUser(null);
         toast.success("Logged out successfully");
     };
-
-    const value = {
-        authUser,
-        token,
-        login,
-        signup,
-        logout,
-        socket,
-        onlineUsers,
-        axios: axiosInstance,
-    };
+    
+    const value = { authUser, login, signup, logout, onlineUsers, socket, axios: axiosInstance, loading };
 
     return (
         <AuthContext.Provider value={value}>
-            {children}
+            {!loading && children}
         </AuthContext.Provider>
     );
 };

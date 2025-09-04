@@ -1,32 +1,34 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import assets from "../assets/assets";
 import { useAuth } from "../../context/AuthContext";
 import { useChat } from "../../context/ChatContext";
 
 const Sidebar = () => {
-    // Get all state and functions from our custom hooks
     const { authUser, logout, onlineUsers } = useAuth();
-    const { users, setSelectedUser, selectedUser, unseenMessages, getMessages, getUsers } = useChat();
-    
-    // Initial state is an empty string for a text input.
-    const [input, setInput] = useState('');
+    const { users, setSelectedUser, selectedUser, unseenMessages, getMessages, setUnseenMessages } = useChat();
+    const [input, setInput] = useState("");
     const navigate = useNavigate();
 
-    // Filter the user data based on the search term
+    // The user list is now filtered based on the search input
     const filteredUsers = input
-        ? users.filter((user) => user.fullName.toLowerCase().includes(input.toLowerCase()))
+        ? users.filter((user) =>
+            user.fullName.toLowerCase().includes(input.toLowerCase())
+        )
         : users;
-
-    useEffect(() => {
-        if (getUsers) {
-            getUsers();
-        }
-    }, []); // An empty array ensures this runs only once when the component mounts.
 
     const handleSelectUser = (user) => {
         setSelectedUser(user);
-        getMessages(user._id); // Fetch messages for the selected user
+        getMessages(user._id);
+        
+        // When a user is selected, clear their unseen messages count
+        if (unseenMessages[user._id]) {
+            setUnseenMessages(prev => {
+                const newUnseen = { ...prev };
+                delete newUnseen[user._id];
+                return newUnseen;
+            });
+        }
     };
 
     return (
@@ -78,11 +80,10 @@ const Sidebar = () => {
                             <div
                                 key={user._id}
                                 onClick={() => handleSelectUser(user)}
-                                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all duration-200 border-2 ${
-                                    selectedUser?._id === user._id
+                                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all duration-200 border-2 ${selectedUser?._id === user._id
                                         ? "bg-white/20 border-white/30"
                                         : "border-transparent hover:bg-white/10"
-                                }`}
+                                    }`}
                             >
                                 <div className="relative">
                                     <img
@@ -117,4 +118,3 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
-

@@ -3,18 +3,22 @@ import "dotenv/config";
 import cors from "cors";
 import http from "http";
 import { connectDB } from "./lib/db.js";
-import authRouter from "./routes/authRouter.js"; 
-import userRouter from "./routes/userRoutes.js";   
-import messageRouter from "./routes/messageRoutes.js"; 
+import authRouter from "./routes/authRouter.js";
+import userRouter from "./routes/userRoutes.js";
+import messageRouter from "./routes/messageRoutes.js";
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 
 const app = express();
 const server = http.createServer(app);
 
-// --- Socket.IO Setup ---
+// --- CORRECTED Socket.IO Setup ---
+// This configuration explicitly allows your frontend to connect, fixing the WebSocket error.
 export const io = new Server(server, {
-  cors: { origin: "*" },
+  cors: {
+    origin: "http://localhost:5173", // The specific URL of your frontend
+    methods: ["GET", "POST"]
+  }
 });
 
 const userSocketMap = {}; // { userId: socketId }
@@ -52,7 +56,7 @@ app.use(cors());
 
 // --- API Routes ---
 app.use("/api/auth", authRouter);
-app.use("/api/users", userRouter); // This path is correct for the frontend
+app.use("/api/users", userRouter);
 app.use("/api/messages", messageRouter);
 
 // --- Database & Server ---
