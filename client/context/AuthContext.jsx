@@ -1,8 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect, useContext } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
-import { toast } from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
 export const AuthContext = createContext();
 
@@ -10,101 +9,107 @@ export const useAuth = () => {
     return useContext(AuthContext);
 };
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-
 export const AuthProvider = ({ children }) => {
-    const [authUser, setAuthUser] = useState(null);
+    const [authUser, setAuthUser] = useState(JSON.parse(localStorage.getItem("chat-user")) || null);
+    const [token, setToken] = useState(localStorage.getItem("chat-token") || null);
     const [socket, setSocket] = useState(null);
     const [onlineUsers, setOnlineUsers] = useState([]);
-    const [isSocketConnected, setIsSocketConnected] = useState(false); // Our "green light" state
-    const navigate = useNavigate();
+    
+    // --- THIS IS THE FIX ---
+    // The baseURL should be '/api' so that it correctly prefixes all API calls.
+    // e.g., /api + /auth/login = /api/auth/login
+    // e.g., /api + /messages/users = /api/messages/users
+    const axiosInstance = axios.create({
+        baseURL: "/api",
+    });
 
-    const setAxiosToken = (token) => {
-        if (token) axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-        else delete axios.defaults.headers.common["Authorization"];
-    };
+    // This effect correctly sets the auth token for all subsequent requests
+    useEffect(() => {
+        if (token) {
+            axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        } else {
+            delete axiosInstance.defaults.headers.common["Authorization"];
+        }
+    }, [token, axiosInstance.defaults.headers.common]);
 
-    const login = async (state, credentials) => {
+    // This effect correctly establishes the secure socket connection
+    useEffect(() => {
+        if (authUser && token) {
+            const newSocket = io("http://localhost:5000", {
+                auth: { token },
+            });
+            setSocket(newSocket);
+
+            newSocket.on("getOnlineUsers", (users) => setOnlineUsers(users));
+
+            newSocket.on("connect_error", (err) => {
+                toast.error(`Socket connection failed: ${err.message}`);
+            });
+
+            return () => newSocket.close();
+        } else {
+            if (socket) {
+                socket.close();
+                setSocket(null);
+            }
+        }
+    }, [authUser, token]);
+
+    const login = async (credentials) => {
         try {
-            const { data } = await axios.post(`/api/auth/${state}`, credentials);
+            const { data } = await axiosInstance.post("/auth/login", credentials);
             if (data.success) {
-                localStorage.setItem("quickchat_token", data.token);
-                setAxiosToken(data.token);
                 setAuthUser(data.userData);
+                setToken(data.token);
+                localStorage.setItem("chat-user", JSON.stringify(data.userData));
+                localStorage.setItem("chat-token", data.token);
                 toast.success(data.message);
-                navigate("/");
-            } else {
-                toast.error(data.message);
             }
         } catch (error) {
-            toast.error(error.response?.data?.message || "An error occurred.");
+            toast.error(error?.response?.data?.message || "Login failed");
+            throw error;
+        }
+    };
+
+    const signup = async (userData) => {
+        try {
+            const { data } = await axiosInstance.post("/auth/signup", userData);
+            if (data.success) {
+                setAuthUser(data.userData);
+                setToken(data.token);
+                localStorage.setItem("chat-user", JSON.stringify(data.userData));
+                localStorage.setItem("chat-token", data.token);
+                toast.success(data.message);
+            }
+        } catch (error) {
+            toast.error(error?.response?.data?.message || "Signup failed");
+            throw error;
         }
     };
 
     const logout = () => {
         setAuthUser(null);
-        localStorage.removeItem("quickchat_token");
-        setAxiosToken(null);
-        if (socket) {
-            socket.disconnect();
-            setSocket(null);
-        }
-        setIsSocketConnected(false); // Turn off the green light
+        setToken(null);
+        localStorage.removeItem("chat-user");
+        localStorage.removeItem("chat-token");
         toast.success("Logged out successfully");
-        navigate("/login");
     };
 
-    const updateProfile = async (profileData) => {
-        try {
-            const { data } = await axios.put("/api/users/update", profileData);
-            if (data.success) {
-                setAuthUser(data.userData);
-                toast.success(data.message);
-            }
-        } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to update profile.");
-        }
+    const value = {
+        authUser,
+        token,
+        login,
+        signup,
+        logout,
+        socket,
+        onlineUsers,
+        axios: axiosInstance,
     };
-    
-    useEffect(() => {
-        const token = localStorage.getItem("quickchat_token");
-        if (authUser && token && !socket) {
-            const newSocket = io(backendUrl, { auth: { token } });
-            
-            newSocket.on("connect", () => {
-                console.log("Socket connected successfully:", newSocket.id);
-                setSocket(newSocket);
-                setIsSocketConnected(true); // Green light is ON
-            });
 
-            newSocket.on("getOnlineUsers", (users) => setOnlineUsers(users));
-            newSocket.on("disconnect", () => {
-                console.log("Socket disconnected");
-                setSocket(null);
-                setIsSocketConnected(false); // Green light is OFF
-            });
-
-            return () => newSocket.close();
-        }
-    }, [authUser]);
-
-    useEffect(() => {
-        const checkAuth = async () => {
-            const token = localStorage.getItem("quickchat_token");
-            if (!token) return;
-            setAxiosToken(token);
-            try {
-                const { data } = await axios.get("/api/users/me");
-                if (data.success) setAuthUser(data.userData);
-            } catch (err) {
-                localStorage.removeItem("quickchat_token");
-            }
-        };
-        checkAuth();
-    }, []);
-
-    const value = { authUser, login, logout, updateProfile, socket, onlineUsers, isSocketConnected };
-
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={value}>
+            {children}
+        </AuthContext.Provider>
+    );
 };
 
