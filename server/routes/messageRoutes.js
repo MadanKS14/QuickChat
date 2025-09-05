@@ -16,4 +16,3 @@ router.get("/mark/:id", protectRoute, markMessagesAsSeen);
 router.post("/send/:id", protectRoute, sendMessage);
 
 export default router;
-
