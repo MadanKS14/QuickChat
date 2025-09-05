@@ -9,9 +9,9 @@ export const useAuth = () => {
     return useContext(AuthContext);
 };
 
-// This refinement makes the backend URL configuration more robust.
+// Axios instance for backend
 const axiosInstance = axios.create({
-    baseURL: `${import.meta.env.VITE_BACKEND_URL || ''}/api`,
+    baseURL: `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api`,
 });
 
 export const AuthProvider = ({ children }) => {
@@ -20,6 +20,7 @@ export const AuthProvider = ({ children }) => {
     const [onlineUsers, setOnlineUsers] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    // Attach token to all requests
     useEffect(() => {
         const interceptor = axiosInstance.interceptors.request.use(
             (config) => {
@@ -42,6 +43,7 @@ export const AuthProvider = ({ children }) => {
         return () => axiosInstance.interceptors.request.eject(interceptor);
     }, []);
 
+    // Socket.IO setup
     useEffect(() => {
         if (authUser) {
             const newSocket = io(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000", {
@@ -63,6 +65,7 @@ export const AuthProvider = ({ children }) => {
         }
     }, [authUser]);
 
+    // ---- AUTH FUNCTIONS ----
     const login = async (credentials) => {
         try {
             const { data } = await axiosInstance.post("/auth/login", credentials);
@@ -80,7 +83,7 @@ export const AuthProvider = ({ children }) => {
 
     const signup = async (credentials) => {
         try {
-             const { data } = await axiosInstance.post("/auth/signup", credentials);
+            const { data } = await axiosInstance.post("/auth/signup", credentials);
             if (data.success) {
                 const userData = { ...data.userData, token: data.token };
                 localStorage.setItem("chat-user", JSON.stringify(userData));
@@ -98,8 +101,38 @@ export const AuthProvider = ({ children }) => {
         setAuthUser(null);
         toast.success("Logged out successfully");
     };
-    
-    const value = { authUser, login, signup, logout, onlineUsers, socket, axios: axiosInstance, loading };
+
+    // ✅ Add updateProfile
+    const updateProfile = async (profileData) => {
+        try {
+            const { data } = await axiosInstance.put("/users/update-profile", profileData);
+            if (data.success) {
+                const updatedUser = { ...data.userData, token: authUser.token };
+                setAuthUser(updatedUser);
+                localStorage.setItem("chat-user", JSON.stringify(updatedUser));
+                toast.success("Profile updated successfully!");
+                return true;
+            } else {
+                toast.error(data.message || "Update failed");
+                return false;
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Update failed");
+            return false;
+        }
+    };
+
+    const value = {
+        authUser,
+        login,
+        signup,
+        logout,
+        updateProfile, // ✅ expose this
+        onlineUsers,
+        socket,
+        axios: axiosInstance,
+        loading,
+    };
 
     return (
         <AuthContext.Provider value={value}>
