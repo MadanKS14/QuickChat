@@ -1,7 +1,8 @@
-import React from 'react';
 import assets from '../assets/assets';
+import { useAuth } from '../../context/authContext';
 
 const RightSidebar = ({ selectedUser, messages }) => {
+  const { logout } = useAuth();
   
   if (!selectedUser) return null;
 
@@ -14,7 +15,11 @@ const RightSidebar = ({ selectedUser, messages }) => {
     <div className="bg-[#282142]/80 p-4 flex flex-col gap-5 overflow-y-auto">
       {/* User Info */}
       <div className="flex flex-col items-center gap-2">
-        <img src={selectedUser.profilePic} alt={selectedUser.fullName} className="w-16 rounded-full" />
+        <img
+          src={selectedUser.profilePic || assets.avatar_icon}
+          alt={selectedUser.fullName}
+          className="w-16 h-16 rounded-full object-cover"
+        />
         <p className="text-white font-medium">{selectedUser.fullName}</p>
         <p className="text-gray-400 text-sm text-center">{selectedUser.bio}</p>
       </div>
@@ -24,8 +29,8 @@ const RightSidebar = ({ selectedUser, messages }) => {
         <p className="text-gray-300 font-semibold mb-2">Shared Media</p>
         <div className="flex flex-wrap gap-2">
           {userMedia.length > 0 ? (
-            userMedia.map((msg, idx) => (
-              <a key={idx} href={msg.image} target="_blank" rel="noopener noreferrer">
+            userMedia.map((msg) => (
+              <a key={msg._id} href={msg.image} target="_blank" rel="noopener noreferrer">
                 <img
                   src={msg.image}
                   alt="media"
@@ -40,7 +45,11 @@ const RightSidebar = ({ selectedUser, messages }) => {
       </div>
 
       {/* Logout Button */}
-      <button className="mt-auto bg-violet-500 text-white py-2 rounded-lg hover:bg-violet-600 transition">
+      <button
+        type="button"
+        onClick={logout}
+        className="mt-auto bg-violet-500 text-white py-2 rounded-lg hover:bg-violet-600 transition"
+      >
         Logout
       </button>
     </div>

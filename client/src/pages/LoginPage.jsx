@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/authContext";
 import assets from "../assets/assets";
 
 const LoginPage = () => {
@@ -35,7 +35,7 @@ const LoginPage = () => {
         setLoading(true);
         try {
             await signup({ fullName, email, password, bio });
-        } catch (error) {
+        } catch {
             console.error("Signup failed on page");
         } finally {
             setLoading(false);
@@ -49,7 +49,7 @@ const LoginPage = () => {
         setLoading(true);
         try {
             await login({ email, password });
-        } catch (error) {
+        } catch {
             console.error("Login failed on page");
         } finally {
             setLoading(false);

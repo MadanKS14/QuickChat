@@ -12,17 +12,27 @@ import jwt from "jsonwebtoken";
 const app = express();
 const server = http.createServer(app);
 
-// --- CORRECTED Socket.IO Setup ---
-// This configuration explicitly allows your frontend to connect, fixing the WebSocket error.
+const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+
 export const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // The specific URL of your frontend
+    origin: clientUrl,
     methods: ["GET", "POST"]
   }
 });
 
-const userSocketMap = {}; // { userId: socketId }
-export const getReceiverSocketId = (receiverId) => userSocketMap[receiverId];
+const userSocketMap = new Map();
+
+const getOnlineUserIds = () => [...userSocketMap.keys()];
+
+export const emitToUser = (userId, eventName, payload) => {
+  const socketIds = userSocketMap.get(userId.toString());
+  if (!socketIds) return;
+
+  socketIds.forEach((socketId) => {
+    io.to(socketId).emit(eventName, payload);
+  });
+};
 
 // Secure Socket.IO Middleware
 io.use((socket, next) => {
@@ -39,20 +49,28 @@ io.use((socket, next) => {
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
   const userId = socket.userId;
-  if (userId) userSocketMap[userId] = socket.id;
+  const socketIds = userSocketMap.get(userId) || new Set();
+  socketIds.add(socket.id);
+  userSocketMap.set(userId, socketIds);
 
-  io.emit("getOnlineUsers", Object.keys(userSocketMap));
+  io.emit("getOnlineUsers", getOnlineUserIds());
 
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
-    if (userId) delete userSocketMap[userId];
-    io.emit("getOnlineUsers", Object.keys(userSocketMap));
+    const currentSocketIds = userSocketMap.get(userId);
+    currentSocketIds?.delete(socket.id);
+
+    if (currentSocketIds?.size === 0) {
+      userSocketMap.delete(userId);
+    }
+
+    io.emit("getOnlineUsers", getOnlineUserIds());
   });
 });
 
 // --- Middleware ---
 app.use(express.json({ limit: "4mb" }));
-app.use(cors());
+app.use(cors({ origin: clientUrl }));
 
 // --- API Routes ---
 app.use("/api/auth", authRouter);

@@ -15,10 +15,21 @@ const messageSchema = new mongoose.Schema({
         type: String,
     },
     image: {
-        type: String, // Changed to String to store the image URL
+        type: String,
         default: "",
-    }
+    },
+    seen: {
+        type: Boolean,
+        default: false,
+    },
+    seenAt: {
+        type: Date,
+        default: null,
+    },
 }, { timestamps: true });
+
+messageSchema.index({ senderId: 1, receiverId: 1, createdAt: 1 });
+messageSchema.index({ receiverId: 1, seen: 1 });
 
 const Message = mongoose.model("Message", messageSchema);
 

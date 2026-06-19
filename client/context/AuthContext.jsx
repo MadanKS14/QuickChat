@@ -1,13 +1,8 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import axios from 'axios';
 import { io } from "socket.io-client";
 import toast from 'react-hot-toast';
-
-export const AuthContext = createContext();
-
-export const useAuth = () => {
-    return useContext(AuthContext);
-};
+import { AuthContext } from "./authContext";
 
 // Axios instance for backend
 const axiosInstance = axios.create({
@@ -45,24 +40,26 @@ export const AuthProvider = ({ children }) => {
 
     // Socket.IO setup
     useEffect(() => {
-        if (authUser) {
-            const newSocket = io(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000", {
-                auth: { token: authUser.token },
-            });
-
-            setSocket(newSocket);
-
-            newSocket.on("getOnlineUsers", (users) => {
-                setOnlineUsers(users);
-            });
-
-            return () => newSocket.close();
-        } else {
-            if (socket) {
-                socket.close();
-                setSocket(null);
-            }
+        if (!authUser) {
+            setSocket(null);
+            setOnlineUsers([]);
+            return undefined;
         }
+
+        const newSocket = io(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000", {
+            auth: { token: authUser.token },
+        });
+
+        setSocket(newSocket);
+
+        newSocket.on("getOnlineUsers", (users) => {
+            setOnlineUsers(users);
+        });
+
+        return () => {
+            newSocket.close();
+            setSocket((currentSocket) => currentSocket === newSocket ? null : currentSocket);
+        };
     }, [authUser]);
 
     // ---- AUTH FUNCTIONS ----

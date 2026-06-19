@@ -1,6 +1,6 @@
 import Message from "../models/Message.js";
-import User from "../models/User.js"; // You will need to import the User model
-import { getReceiverSocketId, io } from "../server.js";
+import User from "../models/User.js";
+import { emitToUser } from "../server.js";
 import cloudinary from "../lib/cloudinary.js";
 
 /**
@@ -29,10 +29,7 @@ export const sendMessage = async (req, res) => {
 
         await newMessage.save();
 
-        const receiverSocketId = getReceiverSocketId(receiverId);
-        if (receiverSocketId) {
-            io.to(receiverSocketId).emit("newMessage", newMessage);
-        }
+        emitToUser(receiverId, "newMessage", newMessage);
 
         // Return a structured success response
         res.status(201).json({ success: true, newMessage });
@@ -73,12 +70,23 @@ export const markMessagesAsSeen = async (req, res) => {
         const { id: otherUserId } = req.params;
         const currentUserId = req.user._id;
 
-        await Message.updateMany(
+        const seenAt = new Date();
+        const result = await Message.updateMany(
             { senderId: otherUserId, receiverId: currentUserId, seen: false },
-            { $set: { seen: true } }
+            { $set: { seen: true, seenAt } }
         );
 
-        res.status(200).json({ success: true, message: "Messages marked as seen" });
+        if (result.modifiedCount > 0) {
+            emitToUser(otherUserId, "messagesSeen", {
+                seenByUserId: currentUserId.toString(),
+                seenAt,
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            updatedCount: result.modifiedCount,
+        });
     } catch (error) {
         console.error("Error in markMessagesAsSeen:", error.message);
         res.status(500).json({ success: false, message: "Internal Server Error" });

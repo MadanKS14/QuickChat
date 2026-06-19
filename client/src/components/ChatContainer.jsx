@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import assets from "../assets/assets";
 import { formatMessageTime } from "../lib/utils";
-import { useChat } from "../../context/ChatContext.jsx";
-import { useAuth } from "../../context/AuthContext.jsx";
+import { useChat } from "../../context/chatContext";
+import { useAuth } from "../../context/authContext";
 
 const ChatContainer = () => {
   const { messages, selectedUser, setSelectedUser, sendMessage } = useChat();
@@ -83,7 +83,7 @@ const ChatContainer = () => {
 
     return (
       <div
-        key={msg._id || `${msg.createdAt}-${Math.random()}`}
+        key={msg._id}
         className={`flex items-start gap-2.5 ${isMine ? "justify-end" : "justify-start"}`}
       >
         {!isMine && (
@@ -115,6 +115,7 @@ const ChatContainer = () => {
           </div>
           <span className="mt-1 text-[10px] opacity-70">
             {formatMessageTime(msg.createdAt)}
+            {isMine && <span className="ml-1">{msg.seen ? "✓✓" : "✓"}</span>}
           </span>
         </div>
       </div>

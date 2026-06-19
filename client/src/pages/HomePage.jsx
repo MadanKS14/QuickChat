@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import ChatContainer from '../components/ChatContainer';
 import RightSidebar from '../components/RightSidebar';
-import { messagesDummyData } from '../assets/assets';
+import { useChat } from '../../context/chatContext';
 
 const HomePage = () => {
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [messages, setMessages] = useState(messagesDummyData);
+  const { selectedUser, messages } = useChat();
 
   return (
     <div className="w-full h-screen sm:px-[5%] sm:py-[3%] bg-black/5">

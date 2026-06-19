@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import assets from "../assets/assets";
-import { useAuth } from "../../context/AuthContext";
-import { useChat } from "../../context/ChatContext";
+import { useAuth } from "../../context/authContext";
+import { useChat } from "../../context/chatContext";
 
 const Sidebar = () => {
     const { authUser, logout, onlineUsers } = useAuth();
-    const { users, setSelectedUser, selectedUser, unseenMessages, getMessages, setUnseenMessages } = useChat();
+    const { users, setSelectedUser, selectedUser, unseenMessages, getMessages } = useChat();
     const [input, setInput] = useState("");
     const navigate = useNavigate();
 
@@ -20,15 +20,6 @@ const Sidebar = () => {
     const handleSelectUser = (user) => {
         setSelectedUser(user);
         getMessages(user._id);
-        
-        // When a user is selected, clear their unseen messages count
-        if (unseenMessages[user._id]) {
-            setUnseenMessages(prev => {
-                const newUnseen = { ...prev };
-                delete newUnseen[user._id];
-                return newUnseen;
-            });
-        }
     };
 
     return (
