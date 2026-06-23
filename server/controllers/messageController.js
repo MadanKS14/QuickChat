@@ -2,6 +2,7 @@ import Message from "../models/Message.js";
 import User from "../models/User.js";
 import { emitToUser } from "../server.js";
 import cloudinary from "../lib/cloudinary.js";
+import Conversation from "../models/Conversation.js";
 
 /**
  * Send a message
@@ -12,30 +13,60 @@ export const sendMessage = async (req, res) => {
         const { id: receiverId } = req.params;
         const senderId = req.user._id;
 
+        if (!text?.trim() && !image) {
+            return res.status(400).json({
+                success: false,
+                message: "Message cannot be empty",
+            });
+        }
+
         let imageUrl = "";
+
         if (image) {
             const uploadedResponse = await cloudinary.uploader.upload(image, {
                 folder: "quickchat_messages",
             });
+
             imageUrl = uploadedResponse.secure_url;
         }
 
-        const newMessage = new Message({
+        const newMessage = await Message.create({
             senderId,
             receiverId,
-            text,
+            text: text?.trim() || "",
             image: imageUrl,
         });
 
-        await newMessage.save();
+        let conversation = await Conversation.findOne({
+            participants: {
+                $all: [senderId, receiverId],
+            },
+        });
+
+        if (!conversation) {
+            conversation = await Conversation.create({
+                participants: [senderId, receiverId],
+                lastMessage: newMessage._id,
+            });
+        } else {
+            conversation.lastMessage = newMessage._id;
+            await conversation.save();
+        }
 
         emitToUser(receiverId, "newMessage", newMessage);
 
-        // Return a structured success response
-        res.status(201).json({ success: true, newMessage });
+        res.status(201).json({
+            success: true,
+            newMessage,
+        });
+
     } catch (error) {
         console.error("Error in sendMessage:", error.message);
-        res.status(500).json({ success: false, message: "Internal Server Error" });
+
+        res.status(500).json({
+            success: false,
+            message: "Internal Server Error",
+        });
     }
 };
 
