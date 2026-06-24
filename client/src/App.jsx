@@ -1,14 +1,15 @@
-import React from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import ProfilePage from './pages/ProfilePage';
-import assets from './assets/assets';
+import { Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { useAuth } from './context/authContext';
+
+import HomePage from "./pages/HomePage";
+import LoginPage from "./pages/LoginPage";
+import SignupPage from "./pages/SignupPage";
+import ProfilePage from "./pages/ProfilePage";
+
+import assets from "./assets/assets";
+import { useAuth } from "./context/authContext";
 
 const App = () => {
-  // Use the custom hook to get the authUser state
   const { authUser } = useAuth();
 
   return (
@@ -16,23 +17,32 @@ const App = () => {
       className="w-screen h-screen bg-cover bg-center"
       style={{ backgroundImage: `url(${assets.bgImage})` }}
     >
-      <Toaster />
-      
+      <Toaster position="top-right" />
+
       <Routes>
-        {/* If user is logged in, show the page. Otherwise, redirect to login. */}
-        <Route 
-          path="/" 
-          element={authUser ? <HomePage /> : <Navigate to="/login" />} 
-        />
-        <Route 
-          path="/profile" 
-          element={authUser ? <ProfilePage /> : <Navigate to="/login" />} 
+        <Route
+          path="/"
+          element={authUser ? <HomePage /> : <Navigate to="/login" replace />}
         />
 
-        {/* If user is NOT logged in, show the login page. Otherwise, redirect to home. */}
-        <Route 
-          path="/login" 
-          element={!authUser ? <LoginPage /> : <Navigate to="/" />} 
+        <Route
+          path="/profile"
+          element={authUser ? <ProfilePage /> : <Navigate to="/login" replace />}
+        />
+
+        <Route
+          path="/login"
+          element={!authUser ? <LoginPage /> : <Navigate to="/" replace />}
+        />
+
+        <Route
+          path="/signup"
+          element={!authUser ? <SignupPage /> : <Navigate to="/" replace />}
+        />
+
+        <Route
+          path="*"
+          element={<Navigate to={authUser ? "/" : "/login"} replace />}
         />
       </Routes>
     </div>
