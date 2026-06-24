@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import assets from "../assets/assets";
 import { formatMessageTime } from "../lib/utils";
-import { useChat } from "../../context/chatContext";
-import { useAuth } from "../../context/authContext";
+import { useChat } from "../context/chatContext";
+import { useAuth } from "../context/authContext";
 
 const ChatContainer = () => {
   const { messages, selectedUser, setSelectedUser, sendMessage } = useChat();

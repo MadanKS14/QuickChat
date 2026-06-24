@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import assets from "../assets/assets";
-import { useAuth } from "../../context/authContext";
-import { useChat } from "../../context/chatContext";
+import { useAuth } from "../context/authContext";
+import { useChat } from "../context/chatContext";
 
 const Sidebar = () => {
     const { authUser, logout, onlineUsers } = useAuth();

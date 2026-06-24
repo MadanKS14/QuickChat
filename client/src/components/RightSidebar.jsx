@@ -1,5 +1,5 @@
 import assets from '../assets/assets';
-import { useAuth } from '../../context/authContext';
+import { useAuth } from '../context/authContext';
 
 const RightSidebar = ({ selectedUser, messages }) => {
   const { logout } = useAuth();

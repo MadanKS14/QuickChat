@@ -5,7 +5,7 @@ import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import assets from './assets/assets';
 import { Toaster } from "react-hot-toast";
-import { useAuth } from '../context/authContext';
+import { useAuth } from './context/authContext';
 
 const App = () => {
   // Use the custom hook to get the authUser state

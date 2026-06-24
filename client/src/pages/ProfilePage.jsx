@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import assets from "../assets/assets";
-import { useAuth } from "../../context/authContext";
+import { useAuth } from "../context/authContext";
 
 const ProfilePage = () => {
 
