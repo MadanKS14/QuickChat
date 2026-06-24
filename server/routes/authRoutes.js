@@ -4,7 +4,6 @@ import { protectRoute } from "../middleware/auth.js";
 
 const authRouter = express.Router();
 
-// Auth routes
 authRouter.post("/signup", signup);
 authRouter.post("/login", login);
 authRouter.get("/me", protectRoute, getMe);

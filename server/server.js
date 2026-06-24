@@ -3,11 +3,12 @@ import "dotenv/config";
 import cors from "cors";
 import http from "http";
 import { connectDB } from "./lib/db.js";
-import authRouter from "./routes/authRouter.js";
+import authRouter from "./routes/authRoutes.js";
 import userRouter from "./routes/userRoutes.js";
 import messageRouter from "./routes/messageRoutes.js";
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
+import conversationRouter from "./routes/conversationRoutes.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -76,6 +77,7 @@ app.use(cors({ origin: clientUrl }));
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/messages", messageRouter);
+app.use("/api/conversations", conversationRouter);
 
 // --- Database & Server ---
 const startServer = async () => {
