@@ -1,7 +1,7 @@
-import Sidebar from '../components/Sidebar';
-import ChatContainer from '../components/ChatContainer';
-import RightSidebar from '../components/RightSidebar';
-import { useChat } from '../context/chatContext';
+import Sidebar from "../components/Sidebar";
+import ChatContainer from "../components/ChatContainer";
+import RightSidebar from "../components/RightSidebar";
+import { useChat } from "../context/chatContext";
 
 const HomePage = () => {
   const { selectedUser, messages } = useChat();
@@ -9,20 +9,22 @@ const HomePage = () => {
   return (
     <div className="w-full h-screen sm:px-[5%] sm:py-[3%] bg-black/5">
       <div
-        className={`grid h-full rounded-2xl overflow-hidden border-2 border-gray-600 ${
+        className={`grid h-full overflow-hidden rounded-2xl border border-white/10 ${
           selectedUser
-            ? 'md:grid-cols-[1fr_2fr_1fr] xl:grid-cols-[1fr_3fr_1fr]'
-            : 'md:grid-cols-2'
+            ? "md:grid-cols-[1fr_2fr_1fr] xl:grid-cols-[1fr_3fr_1fr]"
+            : "md:grid-cols-2"
         }`}
       >
-        {/* Sidebar */}
-        <Sidebar  />
+        <Sidebar />
 
-        {/* Chat Container */}
-        <ChatContainer/>
+        <ChatContainer />
 
-        {/* Right Sidebar */}
-        {selectedUser && <RightSidebar selectedUser={selectedUser} messages={messages} />}
+        {selectedUser && (
+          <RightSidebar
+            selectedUser={selectedUser}
+            messages={messages}
+          />
+        )}
       </div>
     </div>
   );

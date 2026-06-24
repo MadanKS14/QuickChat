@@ -188,7 +188,7 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (profileData) => {
     try {
       const { data } = await axiosInstance.put(
-        "/users/update-profile",
+        "/users/profile",
         profileData
       );
 
