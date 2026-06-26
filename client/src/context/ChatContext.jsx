@@ -81,27 +81,40 @@ export const ChatProvider = ({ children }) => {
         if (!socket) return undefined;
 
         const handleNewMessage = async (newMessage) => {
-            if (selectedUser && newMessage.senderId === selectedUser._id) {
-                setMessages((previous) => [...previous, newMessage]);
-                await markMessagesAsSeen(selectedUser._id);
+            const senderId =
+                typeof newMessage.senderId === "object"
+                    ? newMessage.senderId._id?.toString()
+                    : newMessage.senderId?.toString();
+
+            const selectedId = selectedUser?._id?.toString();
+
+            if (selectedId && senderId === selectedId) {
+                setMessages((prev) => [...prev, newMessage]);
+                await markMessagesAsSeen(selectedId);
                 return;
             }
 
-            if (authUser) {
-                toast.success("New message received!");
-                setUnseenMessages((previous) => ({
-                    ...previous,
-                    [newMessage.senderId]: (previous[newMessage.senderId] || 0) + 1,
-                }));
-            }
+            toast.success("New message received!");
+
+            setUnseenMessages((prev) => ({
+                ...prev,
+                [senderId]: (prev[senderId] || 0) + 1,
+            }));
         };
 
         const handleMessagesSeen = ({ seenByUserId, seenAt }) => {
-            setMessages((previous) => previous.map((message) => (
-                message.receiverId === seenByUserId && !message.seen
-                    ? { ...message, seen: true, seenAt }
-                    : message
-            )));
+            setMessages((previous) =>
+                previous.map((message) => {
+                    const receiverId =
+                        typeof message.receiverId === "object"
+                            ? message.receiverId._id?.toString()
+                            : message.receiverId?.toString();
+
+                    return receiverId === seenByUserId && !message.seen
+                        ? { ...message, seen: true, seenAt }
+                        : message;
+                })
+            );
         };
 
         socket.on("newMessage", handleNewMessage);
