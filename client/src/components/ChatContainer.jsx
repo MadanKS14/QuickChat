@@ -165,7 +165,7 @@ const ChatContainer = () => {
             )}
           </div>
 
-          <span className="text-[10px] opacity-70">
+          <span className="mt-1 text-[11px] text-white/90">
             {formatMessageTime(message.createdAt)}
 
             {isMine && (
