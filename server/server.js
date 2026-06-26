@@ -18,7 +18,8 @@ const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
 export const io = new Server(server, {
   cors: {
     origin: clientUrl,
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST"],
+    credentials = true,
   }
 });
 
@@ -71,7 +72,7 @@ io.on("connection", (socket) => {
 
 // --- Middleware ---
 app.use(express.json({ limit: "4mb" }));
-app.use(cors({ origin: clientUrl }));
+app.use(cors({ origin: clientUrl , credentials=true }));
 
 // --- API Routes ---
 app.use("/api/auth", authRouter);
