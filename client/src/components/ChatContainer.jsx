@@ -146,8 +146,8 @@ const ChatContainer = () => {
 
           <div
             className={`rounded-2xl p-3 shadow ${isMine
-                ? "bg-violet-600 text-white rounded-br-sm"
-                : "bg-white/10 text-white rounded-bl-sm"
+              ? "bg-violet-600 text-white rounded-br-sm"
+              : "bg-white/10 text-white rounded-bl-sm"
               }`}
           >
             {message.image && (
@@ -165,11 +165,11 @@ const ChatContainer = () => {
             )}
           </div>
 
-          <span className="text-[10px] opacity-70 mt-1">
+          <span className="text-[10px] opacity-70">
             {formatMessageTime(message.createdAt)}
 
             {isMine && (
-              <span className="ml-1">
+              <span className="ml-1 text-white font-semibold">
                 {message.seen ? "✓✓" : "✓"}
               </span>
             )}
@@ -202,8 +202,8 @@ const ChatContainer = () => {
 
           <p
             className={`text-xs ${isOnline
-                ? "text-green-400"
-                : "text-white/50"
+              ? "text-green-400"
+              : "text-white/50"
               }`}
           >
             {isOnline ? "Online" : "Offline"}

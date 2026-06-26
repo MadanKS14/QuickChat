@@ -116,7 +116,6 @@ export const ChatProvider = ({ children }) => {
                 })
             );
         };
-
         socket.on("newMessage", handleNewMessage);
         socket.on("messagesSeen", handleMessagesSeen);
 

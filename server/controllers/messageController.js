@@ -107,7 +107,10 @@ export const markMessagesAsSeen = async (req, res) => {
             { $set: { seen: true, seenAt } }
         );
 
+
         if (result.modifiedCount > 0) {
+            console.log("Messages marked as seen:", result.modifiedCount);
+            console.log("Emitting messagesSeen to:", otherUserId.toString());
             emitToUser(otherUserId, "messagesSeen", {
                 seenByUserId: currentUserId.toString(),
                 seenAt,
@@ -122,6 +125,7 @@ export const markMessagesAsSeen = async (req, res) => {
         console.error("Error in markMessagesAsSeen:", error.message);
         res.status(500).json({ success: false, message: "Internal Server Error" });
     }
+
 };
 
 
