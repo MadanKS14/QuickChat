@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { ChatContext } from "./chatContext";
 import { useAuth } from "./authContext";
 
+
 export const ChatProvider = ({ children }) => {
     const { socket, axios: axiosInstance, authUser } = useAuth();
 
@@ -11,6 +12,7 @@ export const ChatProvider = ({ children }) => {
     const [messages, setMessages] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
     const [unseenMessages, setUnseenMessages] = useState({});
+    const [typingUsers, setTypingUsers] = useState({});
 
     // ================= USERS =================
 
@@ -41,7 +43,7 @@ export const ChatProvider = ({ children }) => {
         } catch (error) {
             console.error(
                 error?.response?.data?.message ||
-                    "Failed to fetch conversations"
+                "Failed to fetch conversations"
             );
         }
     }, [axiosInstance]);
@@ -63,7 +65,7 @@ export const ChatProvider = ({ children }) => {
             } catch (error) {
                 toast.error(
                     error?.response?.data?.message ||
-                        "Failed to fetch messages"
+                    "Failed to fetch messages"
                 );
             }
         },
@@ -92,7 +94,7 @@ export const ChatProvider = ({ children }) => {
         } catch (error) {
             toast.error(
                 error?.response?.data?.message ||
-                    "Failed to send message"
+                "Failed to send message"
             );
         }
     };
@@ -195,12 +197,32 @@ export const ChatProvider = ({ children }) => {
             await getConversations();
         };
 
+
+        const handleTyping = ({ senderId }) => {
+            setTypingUsers((prev) => ({
+                ...prev,
+                [senderId]: true,
+            }));
+        };
+
+        const handleStopTyping = ({ senderId }) => {
+            setTypingUsers((prev) => {
+                const updated = { ...prev };
+                delete updated[senderId];
+                return updated;
+            });
+        };
+
         socket.on("newMessage", handleNewMessage);
         socket.on("messagesSeen", handleMessagesSeen);
+        socket.on("typing", handleTyping);
+        socket.on("stopTyping", handleStopTyping);
 
         return () => {
             socket.off("newMessage", handleNewMessage);
             socket.off("messagesSeen", handleMessagesSeen);
+            socket.off("typing", handleTyping);
+            socket.off("stopTyping", handleStopTyping);
         };
     }, [
         socket,
@@ -218,6 +240,7 @@ export const ChatProvider = ({ children }) => {
                 messages,
                 selectedUser,
                 unseenMessages,
+                typingUsers,
 
                 setSelectedUser,
                 setMessages,

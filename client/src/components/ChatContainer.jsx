@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import assets from "../assets/assets";
 import { formatMessageTime } from "../lib/utils";
 import { useChat } from "../context/chatContext";
@@ -6,8 +6,8 @@ import { useAuth } from "../context/authContext";
 import EmojiPicker from "emoji-picker-react";
 
 const ChatContainer = () => {
-  const { messages, selectedUser, setSelectedUser, sendMessage } = useChat();
-  const { authUser, onlineUsers } = useAuth();
+  const { messages, selectedUser, setSelectedUser, sendMessage, typingUsers, } = useChat();
+  const { authUser, onlineUsers, socket } = useAuth();
 
   const [newMessage, setNewMessage] = useState("");
   const [image, setImage] = useState(null);
@@ -18,8 +18,10 @@ const ChatContainer = () => {
   const messagesContainerRef = useRef(null);
   const bottomRef = useRef(null);
   const emojiPickerRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   const myId = authUser?._id?.toString();
+  const isTyping = !!typingUsers?.[selectedUser?._id];
 
   const isOnline = useMemo(() => {
     return selectedUser
@@ -87,6 +89,31 @@ const ChatContainer = () => {
     setNewMessage((prev) => prev + emojiData.emoji);
   };
 
+
+  const emitTyping = useCallback(
+    (value) => {
+
+          console.log("📤 Typing event emitted");
+
+      if (!socket || !selectedUser) return;
+
+      socket.emit("typing", {
+        receiverId: selectedUser._id,
+      });
+
+      clearTimeout(typingTimeoutRef.current);
+
+      typingTimeoutRef.current = setTimeout(() => {
+                console.log("📤 Stop Typing emitted");
+
+        socket.emit("stopTyping", {
+          receiverId: selectedUser._id,
+        });
+      }, 800);
+    },
+    [socket, selectedUser]
+  );
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
 
@@ -112,6 +139,10 @@ const ChatContainer = () => {
             image: reader.result,
           });
 
+          socket?.emit("stopTyping", {
+            receiverId: selectedUser._id,
+          });
+
           resetMessageState();
           setSending(false);
           setShowEmojiPicker(false);
@@ -121,6 +152,10 @@ const ChatContainer = () => {
       }
 
       await sendMessage(payload);
+
+      socket?.emit("stopTyping", {
+        receiverId: selectedUser._id,
+      });
 
       resetMessageState();
     } finally {
@@ -227,12 +262,18 @@ const ChatContainer = () => {
           </p>
 
           <p
-            className={`text-xs ${isOnline
-              ? "text-green-400"
-              : "text-white/50"
+            className={`text-xs transition-all ${isTyping
+              ? "text-violet-400"
+              : isOnline
+                ? "text-green-400"
+                : "text-white/50"
               }`}
           >
-            {isOnline ? "Online" : "Offline"}
+            {isTyping
+              ? "Typing..."
+              : isOnline
+                ? "Online"
+                : "Offline"}
           </p>
         </div>
       </div>
@@ -302,7 +343,10 @@ const ChatContainer = () => {
               type="text"
               value={newMessage}
               placeholder="Type a message..."
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={(e) => {
+                setNewMessage(e.target.value);
+                emitTyping(e.target.value);
+              }}
               className="flex-1 bg-transparent outline-none text-white placeholder-white/40 text-sm"
             />
 

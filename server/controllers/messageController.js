@@ -2,7 +2,7 @@ import Message from "../models/Message.js";
 import User from "../models/User.js";
 import Conversation from "../models/Conversation.js";
 import cloudinary from "../lib/cloudinary.js";
-import { emitToUser } from "../server.js";
+import { emitToUser } from "../config/socket.js";
 
 export const sendMessage = async (req, res) => {
     try {
