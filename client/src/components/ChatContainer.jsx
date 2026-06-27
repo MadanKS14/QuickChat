@@ -3,6 +3,7 @@ import assets from "../assets/assets";
 import { formatMessageTime } from "../lib/utils";
 import { useChat } from "../context/chatContext";
 import { useAuth } from "../context/authContext";
+import EmojiPicker from "emoji-picker-react";
 
 const ChatContainer = () => {
   const { messages, selectedUser, setSelectedUser, sendMessage } = useChat();
@@ -12,9 +13,11 @@ const ChatContainer = () => {
   const [image, setImage] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
   const [sending, setSending] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const messagesContainerRef = useRef(null);
   const bottomRef = useRef(null);
+  const emojiPickerRef = useRef(null);
 
   const myId = authUser?._id?.toString();
 
@@ -62,6 +65,28 @@ const ChatContainer = () => {
     setImageUrl("");
   };
 
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target)
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleEmojiClick = (emojiData) => {
+    setNewMessage((prev) => prev + emojiData.emoji);
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
 
@@ -89,6 +114,7 @@ const ChatContainer = () => {
 
           resetMessageState();
           setSending(false);
+          setShowEmojiPicker(false);
         };
 
         return;
@@ -249,6 +275,28 @@ const ChatContainer = () => {
         )}
 
         <div className="flex items-center gap-3">
+
+          <div className="relative" ref={emojiPickerRef}>
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker((prev) => !prev)}
+              className="mr-2 text-xl hover:scale-110 transition"
+            >
+              😊
+            </button>
+
+            {showEmojiPicker && (
+              <div className="absolute bottom-12 left-0 z-50">
+                <EmojiPicker
+                  onEmojiClick={handleEmojiClick}
+                  theme="dark"
+                  searchDisabled={false}
+                  skinTonesDisabled={false}
+                  lazyLoadEmojis
+                />
+              </div>
+            )}
+          </div>
           <div className="flex items-center flex-1 bg-white/5 border border-white/10 rounded-full px-4 py-2">
             <input
               type="text"
