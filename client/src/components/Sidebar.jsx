@@ -11,7 +11,7 @@ const Sidebar = () => {
   const { authUser, logout, onlineUsers } = useAuth();
 
   const {
-    users,
+    conversations,
     selectedUser,
     setSelectedUser,
     unseenMessages,
@@ -41,13 +41,16 @@ const Sidebar = () => {
     };
   }, []);
 
-  const filteredUsers = useMemo(() => {
-    if (!search.trim()) return users;
+  const filteredConversations = useMemo(() => {
+    if (!search.trim()) return conversations;
 
-    return users.filter((user) =>
-      user.fullName.toLowerCase().includes(search.toLowerCase())
+    return conversations.filter((conversation) =>
+      conversation.participant.fullName
+        .toLowerCase()
+        .includes(search.toLowerCase())
     );
-  }, [users, search]);
+  }, [conversations, search]);
+
 
   const handleSelectUser = async (user) => {
     setSelectedUser(user);
@@ -113,21 +116,22 @@ const Sidebar = () => {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search users..."
+          placeholder="Search coversations..."
           className="flex-1 bg-transparent outline-none text-sm placeholder-white/40"
         />
       </div>
 
       {/* Users */}
       <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-        {filteredUsers.length === 0 ? (
+        {filteredConversations.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <p className="text-sm text-white/50">
-              No users found
+              No conversations found
             </p>
           </div>
         ) : (
-          filteredUsers.map((user) => {
+          filteredConversations.map((conversation) => {
+            const user = conversation.participant;
             const isOnline = onlineUsers?.includes(user._id);
             const unseenCount = unseenMessages?.[user._id] || 0;
             const isSelected = selectedUser?._id === user._id;
@@ -136,11 +140,10 @@ const Sidebar = () => {
               <div
                 key={user._id}
                 onClick={() => handleSelectUser(user)}
-                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
-                  isSelected
-                    ? "bg-white/15 border border-white/20"
-                    : "hover:bg-white/10 border border-transparent"
-                }`}
+                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${isSelected
+                  ? "bg-violet-500/20 border border-violet-500/40"
+                  : "hover:bg-white/5 hover:scale-[1.01] border border-transparent"
+                  }`}
               >
                 <div className="relative">
                   <img
@@ -155,26 +158,36 @@ const Sidebar = () => {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">
-                    {user.fullName}
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium truncate">
+                      {user.fullName}
+                    </p>
 
-                  <p
-                    className={`text-xs ${
-                      isOnline
-                        ? "text-green-400"
-                        : "text-white/50"
-                    }`}
-                  >
-                    {isOnline ? "Online" : "Offline"}
+                    {conversation.lastMessage && (
+                      <span className="text-[11px] text-white/50">
+                        {new Date(conversation.updatedAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-white/50 truncate">
+                    {conversation.lastMessage?.image
+                      ? "📷 Photo"
+                      : conversation.lastMessage?.text || "Start chatting"}
                   </p>
                 </div>
 
-                {unseenCount > 0 && (
-                  <div className="min-w-5 h-5 px-1 bg-violet-600 rounded-full flex items-center justify-center text-[11px] font-semibold">
-                    {unseenCount > 99 ? "99+" : unseenCount}
-                  </div>
-                )}
+                <div className="flex flex-col items-end gap-1">
+                  {unseenCount > 0 && (
+                    <div className="min-w-5 h-5 px-1 bg-green-500 rounded-full flex items-center justify-center text-[11px] font-semibold text-white">
+                      {unseenCount > 99 ? "99+" : unseenCount}
+                    </div>
+                  )}
+                </div>
+
               </div>
             );
           })

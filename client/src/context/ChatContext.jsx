@@ -1,121 +1,200 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
-import { useAuth } from "./authContext";
 import { ChatContext } from "./chatContext";
+import { useAuth } from "./authContext";
 
 export const ChatProvider = ({ children }) => {
-    const [messages, setMessages] = useState([]);
+    const { socket, axios: axiosInstance, authUser } = useAuth();
+
     const [users, setUsers] = useState([]);
+    const [conversations, setConversations] = useState([]);
+    const [messages, setMessages] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
     const [unseenMessages, setUnseenMessages] = useState({});
 
-    const { socket, axios: axiosInstance, authUser } = useAuth();
+    // ================= USERS =================
 
     const getUsers = useCallback(async () => {
         try {
             const { data } = await axiosInstance.get("/messages/users");
+
             if (data.success) {
                 setUsers(data.users);
-                setUnseenMessages(data.unseenMessages);
+                setUnseenMessages(data.unseenMessages || {});
             }
         } catch (error) {
-            toast.error(error?.response?.data?.message || "Failed to fetch users");
+            toast.error(
+                error?.response?.data?.message || "Failed to load users"
+            );
         }
     }, [axiosInstance]);
 
-    const markMessagesAsSeen = useCallback(async (userId) => {
+    // ================= CONVERSATIONS =================
+
+    const getConversations = useCallback(async () => {
         try {
-            const { data } = await axiosInstance.put(`/messages/seen/${userId}`);
+            const { data } = await axiosInstance.get("/conversations");
+
             if (data.success) {
-                setUnseenMessages((previous) => {
-                    const next = { ...previous };
-                    delete next[userId];
-                    return next;
-                });
+                setConversations(data.conversations);
             }
         } catch (error) {
-            console.error("Failed to mark messages as seen", error);
+            console.error(
+                error?.response?.data?.message ||
+                    "Failed to fetch conversations"
+            );
         }
     }, [axiosInstance]);
 
-    useEffect(() => {
-        if (authUser) {
-            getUsers();
-            return;
-        }
+    // ================= MESSAGES =================
 
-        setUsers([]);
-        setMessages([]);
-        setSelectedUser(null);
-        setUnseenMessages({});
-    }, [authUser, getUsers]);
+    const getMessages = useCallback(
+        async (userId) => {
+            try {
+                const { data } = await axiosInstance.get(
+                    `/messages/${userId}`
+                );
 
-    const getMessages = async (userId) => {
-        try {
-            const { data } = await axiosInstance.get(`/messages/${userId}`);
-            if (data.success) {
-                setMessages(data.messages);
-                await markMessagesAsSeen(userId);
+                if (data.success) {
+                    setMessages(data.messages);
+
+                    await markMessagesAsSeen(userId);
+                }
+            } catch (error) {
+                toast.error(
+                    error?.response?.data?.message ||
+                        "Failed to fetch messages"
+                );
             }
-        } catch (error) {
-            toast.error(error?.response?.data?.message || "Failed to fetch messages");
-        }
-    };
+        },
+        [axiosInstance]
+    );
+
+    // ================= SEND =================
 
     const sendMessage = async (messageData) => {
-        if (!selectedUser) return toast.error("No user selected");
+        if (!selectedUser) return;
 
         try {
-            const { data } = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
+            const { data } = await axiosInstance.post(
+                `/messages/send/${selectedUser._id}`,
+                messageData
+            );
+
             if (data.success) {
-                setMessages((previous) => [...previous, data.newMessage]);
+                setMessages((prev) => [...prev, data.newMessage]);
+
+                await getConversations();
+                await getUsers();
             } else {
                 toast.error(data.message);
             }
         } catch (error) {
-            toast.error(error?.response?.data?.message || "Failed to send message");
+            toast.error(
+                error?.response?.data?.message ||
+                    "Failed to send message"
+            );
         }
     };
 
+    // ================= SEEN =================
+
+    const markMessagesAsSeen = useCallback(
+        async (userId) => {
+            try {
+                const { data } = await axiosInstance.put(
+                    `/messages/seen/${userId}`
+                );
+
+                if (data.success) {
+                    setUnseenMessages((prev) => {
+                        const updated = { ...prev };
+                        delete updated[userId];
+                        return updated;
+                    });
+
+                    await getConversations();
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        },
+        [axiosInstance, getConversations]
+    );
+
+    // ================= INITIAL LOAD =================
+
     useEffect(() => {
-        if (!socket) return undefined;
+        if (!authUser) {
+            setUsers([]);
+            setConversations([]);
+            setMessages([]);
+            setSelectedUser(null);
+            setUnseenMessages({});
+            return;
+        }
+
+        getUsers();
+        getConversations();
+    }, [authUser, getUsers, getConversations]);
+
+    // ================= SOCKET =================
+
+    useEffect(() => {
+        if (!socket) return;
 
         const handleNewMessage = async (newMessage) => {
             const senderId =
                 typeof newMessage.senderId === "object"
-                    ? newMessage.senderId._id?.toString()
-                    : newMessage.senderId?.toString();
+                    ? newMessage.senderId._id.toString()
+                    : newMessage.senderId.toString();
 
-            const selectedId = selectedUser?._id?.toString();
-
-            if (selectedId && senderId === selectedId) {
+            if (selectedUser?._id === senderId) {
                 setMessages((prev) => [...prev, newMessage]);
-                await markMessagesAsSeen(selectedId);
-                return;
+
+                await markMessagesAsSeen(senderId);
+            } else {
+                toast.success("New message received");
+
+                setUnseenMessages((prev) => ({
+                    ...prev,
+                    [senderId]: (prev[senderId] || 0) + 1,
+                }));
             }
 
-            toast.success("New message received!");
-
-            setUnseenMessages((prev) => ({
-                ...prev,
-                [senderId]: (prev[senderId] || 0) + 1,
-            }));
+            await getConversations();
+            await getUsers();
         };
 
-        const handleMessagesSeen = ({ seenByUserId, seenAt }) => {
-            setMessages((previous) =>
-                previous.map((message) => {
+        const handleMessagesSeen = async ({
+            seenByUserId,
+            seenAt,
+        }) => {
+            setMessages((prev) =>
+                prev.map((message) => {
                     const receiverId =
                         typeof message.receiverId === "object"
-                            ? message.receiverId._id?.toString()
-                            : message.receiverId?.toString();
+                            ? message.receiverId._id.toString()
+                            : message.receiverId.toString();
 
-                    return receiverId === seenByUserId && !message.seen
-                        ? { ...message, seen: true, seenAt }
-                        : message;
+                    if (
+                        receiverId === seenByUserId &&
+                        !message.seen
+                    ) {
+                        return {
+                            ...message,
+                            seen: true,
+                            seenAt,
+                        };
+                    }
+
+                    return message;
                 })
             );
+
+            await getConversations();
         };
+
         socket.on("newMessage", handleNewMessage);
         socket.on("messagesSeen", handleMessagesSeen);
 
@@ -123,23 +202,34 @@ export const ChatProvider = ({ children }) => {
             socket.off("newMessage", handleNewMessage);
             socket.off("messagesSeen", handleMessagesSeen);
         };
-    }, [socket, selectedUser, authUser, markMessagesAsSeen]);
-
-    const value = {
-        messages,
-        users,
+    }, [
+        socket,
         selectedUser,
-        unseenMessages,
         getUsers,
-        getMessages,
-        setMessages,
-        sendMessage,
-        setSelectedUser,
-        setUnseenMessages,
-    };
+        getConversations,
+        markMessagesAsSeen,
+    ]);
 
     return (
-        <ChatContext.Provider value={value}>
+        <ChatContext.Provider
+            value={{
+                users,
+                conversations,
+                messages,
+                selectedUser,
+                unseenMessages,
+
+                setSelectedUser,
+                setMessages,
+                setUnseenMessages,
+
+                getUsers,
+                getConversations,
+                getMessages,
+
+                sendMessage,
+            }}
+        >
             {children}
         </ChatContext.Provider>
     );
