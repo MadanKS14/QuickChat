@@ -177,3 +177,66 @@ export const getUsersForSidebar = async (req, res) => {
         });
     }
 };
+
+
+export const editMessage = async (req, res) => {
+    try {
+        const { id: messageId } = req.params;
+        const { text } = req.body;
+        const userId = req.user._id;
+
+        if (!text?.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Message text cannot be empty",
+            });
+        }
+
+        const message = await Message.findById(messageId);
+
+        if (!message) {
+            return res.status(404).json({
+                success: false,
+                message: "Message not found",
+            });
+        }
+
+        // Only sender can edit
+        if (message.senderId.toString() !== userId.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: "You are not allowed to edit this message",
+            });
+        }
+
+        // Deleted messages cannot be edited
+        if (message.deleted) {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot edit a deleted message",
+            });
+        }
+
+        message.text = text.trim();
+        message.edited = true;
+        message.editedAt = new Date();
+
+        await message.save();
+
+        // Notify receiver
+        emitToUser(message.receiverId, "messageEdited", message);
+
+        return res.status(200).json({
+            success: true,
+            message,
+        });
+
+    } catch (error) {
+        console.error("editMessage:", error.message);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal Server Error",
+        });
+    }
+};
