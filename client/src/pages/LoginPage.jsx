@@ -28,8 +28,7 @@ const LoginPage = () => {
       await login({ email, password });
     } catch (err) {
       setError(
-        err?.response?.data?.message ||
-          "Couldn't log you in. Please check your details and try again."
+        err.message || "Couldn't log you in. Please check your details and try again."
       );
     } finally {
       setLoading(false);

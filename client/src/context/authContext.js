@@ -11,6 +11,3 @@ export const useAuth = () => {
 
     return context;
 };
-
-
-// this is my authcontext file 

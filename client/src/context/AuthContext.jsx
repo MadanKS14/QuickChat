@@ -1,14 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import toast from "react-hot-toast";
 import { AuthContext } from "./authContext";
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const STORAGE_KEY = "quickchat-user";
+
 const axiosInstance = axios.create({
-  baseURL: `${import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"}/api`,
+  baseURL: `${BACKEND_URL}/api`,
 });
 
-const STORAGE_KEY = "quickchat-user";
+const getStoredUser = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const setStoredUser = (user) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+};
+
+const clearStoredUser = () => {
+  localStorage.removeItem(STORAGE_KEY);
+};
 
 export const AuthProvider = ({ children }) => {
   const [authUser, setAuthUser] = useState(null);
@@ -16,52 +34,51 @@ export const AuthProvider = ({ children }) => {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Verify user on page refresh
-  const checkAuth = async () => {
-    try {
-      const storedUser = localStorage.getItem(STORAGE_KEY);
+  const logout = useCallback(() => {
+    clearStoredUser();
+    setAuthUser(null);
+    setOnlineUsers([]);
+  }, []);
 
-      if (!storedUser) {
+  // Verify user on page refresh
+  useEffect(() => {
+    const checkAuth = async () => {
+      const storedUser = getStoredUser();
+
+      if (!storedUser?.token) {
         setLoading(false);
         return;
       }
 
-      const parsedUser = JSON.parse(storedUser);
-
-      const { data } = await axiosInstance.get("/auth/me", {
-        headers: {
-          Authorization: `Bearer ${parsedUser.token}`,
-        },
-      });
-
-      if (data.success) {
-        setAuthUser({
-          ...data.userData,
-          token: parsedUser.token,
+      try {
+        const { data } = await axiosInstance.get("/auth/me", {
+          headers: { Authorization: `Bearer ${storedUser.token}` },
         });
-      } else {
-        localStorage.removeItem(STORAGE_KEY);
+
+        if (data.success) {
+          setAuthUser({ ...data.userData, token: storedUser.token });
+        } else {
+          clearStoredUser();
+        }
+      } catch (error) {
+        clearStoredUser();
+        console.error("Auth check failed:", error.message);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      localStorage.removeItem(STORAGE_KEY);
-      console.error("Auth check failed:", error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  // Attach token to all requests
+    checkAuth();
+  }, []);
+
+  // Attach token to requests, auto-logout on 401
   useEffect(() => {
-    const interceptor = axiosInstance.interceptors.request.use(
+    const requestInterceptor = axiosInstance.interceptors.request.use(
       (config) => {
-        const storedUser = localStorage.getItem(STORAGE_KEY);
+        const storedUser = getStoredUser();
 
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-
-          if (parsedUser?.token) {
-            config.headers.Authorization = `Bearer ${parsedUser.token}`;
-          }
+        if (storedUser?.token) {
+          config.headers.Authorization = `Bearer ${storedUser.token}`;
         }
 
         return config;
@@ -69,10 +86,22 @@ export const AuthProvider = ({ children }) => {
       (error) => Promise.reject(error)
     );
 
-    checkAuth();
+    const responseInterceptor = axiosInstance.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          clearStoredUser();
+          setAuthUser(null);
+          setOnlineUsers([]);
+        }
+
+        return Promise.reject(error);
+      }
+    );
 
     return () => {
-      axiosInstance.interceptors.request.eject(interceptor);
+      axiosInstance.interceptors.request.eject(requestInterceptor);
+      axiosInstance.interceptors.response.eject(responseInterceptor);
     };
   }, []);
 
@@ -84,138 +113,77 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    const newSocket = io(
-      import.meta.env.VITE_BACKEND_URL || "http://localhost:5000",
-      {
-        auth: {
-          token: authUser.token,
-        },
-      }
-    );
+    const newSocket = io(BACKEND_URL, {
+      auth: { token: authUser.token },
+    });
 
     setSocket(newSocket);
-
-    newSocket.on("getOnlineUsers", (users) => {
-      setOnlineUsers(users);
-    });
+    newSocket.on("getOnlineUsers", setOnlineUsers);
 
     return () => {
       newSocket.disconnect();
-
-      setSocket((currentSocket) =>
-        currentSocket === newSocket ? null : currentSocket
-      );
+      setSocket((current) => (current === newSocket ? null : current));
     };
   }, [authUser]);
 
-  // Login
+  // Login — errors surface inline in the form, not as a toast
   const login = async (credentials) => {
-    try {
-      const { data } = await axiosInstance.post(
-        "/auth/login",
-        credentials
-      );
+    const { data } = await axiosInstance.post("/auth/login", credentials);
 
-      if (data.success) {
-        const userData = {
-          ...data.userData,
-          token: data.token,
-        };
-
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify(userData)
-        );
-
-        setAuthUser(userData);
-
-        toast.success("Login successful");
-      }
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Login failed"
-      );
-      throw error;
+    if (!data.success) {
+      throw new Error(data.message || "Login failed");
     }
+
+    const userData = { ...data.userData, token: data.token };
+    setStoredUser(userData);
+    setAuthUser(userData);
   };
 
-  // Signup
+  // Signup — errors surface inline in the form, not as a toast
   const signup = async (credentials) => {
-    try {
-      const { data } = await axiosInstance.post(
-        "/auth/signup",
-        credentials
-      );
+    const { data } = await axiosInstance.post("/auth/signup", credentials);
 
-      if (data.success) {
-        const userData = {
-          ...data.userData,
-          token: data.token,
-        };
-
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify(userData)
-        );
-
-        setAuthUser(userData);
-
-        toast.success("Account created successfully");
-      }
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Signup failed"
-      );
-      throw error;
+    if (!data.success) {
+      throw new Error(data.message || "Signup failed");
     }
+
+    const userData = { ...data.userData, token: data.token };
+    setStoredUser(userData);
+    setAuthUser(userData);
+
+    toast.success("Account created successfully");
   };
 
-  // Logout
-  const logout = () => {
-    localStorage.removeItem(STORAGE_KEY);
-
-    if (socket) {
-      socket.disconnect();
-    }
-
-    setAuthUser(null);
-    setOnlineUsers([]);
-
+  // Logout (with toast + socket cleanup)
+  const handleLogout = () => {
+    socket?.disconnect();
+    logout();
     toast.success("Logged out successfully");
   };
 
   // Update profile
   const updateProfile = async (profileData) => {
+    if (!authUser?.token) {
+      toast.error("You need to be logged in to update your profile");
+      return false;
+    }
+
     try {
-      const { data } = await axiosInstance.put(
-        "/users/profile",
-        profileData
-      );
+      const { data } = await axiosInstance.put("/users/profile", profileData);
 
-      if (data.success) {
-        const updatedUser = {
-          ...data.userData,
-          token: authUser.token,
-        };
-
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify(updatedUser)
-        );
-
-        setAuthUser(updatedUser);
-
-        toast.success("Profile updated successfully");
-
-        return true;
+      if (!data.success) {
+        toast.error(data.message || "Update failed");
+        return false;
       }
 
-      toast.error(data.message || "Update failed");
-      return false;
+      const updatedUser = { ...data.userData, token: authUser.token };
+      setStoredUser(updatedUser);
+      setAuthUser(updatedUser);
+      toast.success("Profile updated successfully");
+
+      return true;
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Update failed"
-      );
+      toast.error(error.response?.data?.message || "Update failed");
       return false;
     }
   };
@@ -225,7 +193,7 @@ export const AuthProvider = ({ children }) => {
     setAuthUser,
     login,
     signup,
-    logout,
+    logout: handleLogout,
     updateProfile,
     onlineUsers,
     socket,
