@@ -6,14 +6,27 @@ import { useChat } from "../context/chatContext";
 const HomePage = () => {
   const { selectedUser, messages } = useChat();
 
+  const layoutClasses = selectedUser
+    ? "md:grid-cols-[320px_1fr_320px] xl:grid-cols-[340px_1fr_340px]"
+    : "md:grid-cols-[320px_1fr]";
+
   return (
-    <div className="w-full h-screen sm:px-[5%] sm:py-[3%] bg-black/5">
-      <div
-        className={`grid h-full overflow-hidden rounded-2xl border border-white/10 ${
-          selectedUser
-            ? "md:grid-cols-[1fr_2fr_1fr] xl:grid-cols-[1fr_3fr_1fr]"
-            : "md:grid-cols-2"
-        }`}
+    <main className="min-h-screen w-full bg-black/5 p-0 sm:p-4 lg:p-6">
+      <section
+        className={`
+          grid
+          h-screen
+          sm:h-[calc(100vh-2rem)]
+          lg:h-[calc(100vh-3rem)]
+          overflow-hidden
+          rounded-none
+          sm:rounded-2xl
+          border
+          border-white/10
+          bg-black/20
+          backdrop-blur-lg
+          ${layoutClasses}
+        `}
       >
         <Sidebar />
 
@@ -25,8 +38,8 @@ const HomePage = () => {
             messages={messages}
           />
         )}
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };
 
