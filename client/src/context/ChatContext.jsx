@@ -119,6 +119,51 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
+
+  const editMessage = async (messageId, text) => {
+    try {
+      const { data } = await axiosInstance.put(
+        `/messages/edit/${messageId}`,
+        { text }
+      );
+
+      if (data.success) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === messageId ? data.message : msg
+          )
+        );
+      }
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message ||
+        "Failed to edit message"
+      );
+    }
+  };
+
+
+  const deleteMessage = async (messageId) => {
+    try {
+      const { data } = await axiosInstance.delete(
+        `/messages/delete/${messageId}`
+      );
+
+      if (data.success) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === messageId ? data.message : msg
+          )
+        );
+      }
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message ||
+        "Failed to delete message"
+      );
+    }
+  };
+
   // ================= INITIAL LOAD =================
 
   useEffect(() => {
@@ -185,16 +230,41 @@ export const ChatProvider = ({ children }) => {
       });
     };
 
+    const handleMessageEdited = (updatedMessage) => {
+    setMessages((prev) =>
+        prev.map((message) =>
+            message._id === updatedMessage._id
+                ? updatedMessage
+                : message
+        )
+    );
+};
+
+    const handleMessageDeleted = (deletedMessage) => {
+    setMessages((prev) =>
+        prev.map((message) =>
+            message._id === deletedMessage._id
+                ? deletedMessage
+                : message
+        )
+    );
+};
+
+
     socket.on("newMessage", handleNewMessage);
     socket.on("messagesSeen", handleMessagesSeen);
     socket.on("typing", handleTyping);
     socket.on("stopTyping", handleStopTyping);
+    socket.on("messageEdited", handleMessageEdited);
+    socket.on("messageDeleted", handleMessageDeleted);
 
     return () => {
       socket.off("newMessage", handleNewMessage);
       socket.off("messagesSeen", handleMessagesSeen);
       socket.off("typing", handleTyping);
       socket.off("stopTyping", handleStopTyping);
+      socket.off("messageEdited", handleMessageEdited);
+      socket.off("messageDeleted", handleMessageDeleted);
     };
     // selectedUser intentionally excluded — selectedUserRef tracks it without
     // forcing the listener to be torn down and re-attached on every switch.
@@ -209,6 +279,8 @@ export const ChatProvider = ({ children }) => {
         selectedUser,
         unseenMessages,
         typingUsers,
+        editMessage,
+        deleteMessage,
 
         setSelectedUser,
         setMessages,

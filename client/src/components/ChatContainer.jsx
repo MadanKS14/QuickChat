@@ -8,7 +8,7 @@ import EmojiPicker from "emoji-picker-react";
 const TYPING_STOP_DELAY = 800;
 
 const ChatContainer = () => {
-  const { messages, selectedUser, setSelectedUser, sendMessage, typingUsers } =
+  const { messages, selectedUser, setSelectedUser, sendMessage, typingUsers, editMessage, deleteMessage } =
     useChat();
   const { authUser, onlineUsers, socket } = useAuth();
 
@@ -17,6 +17,11 @@ const ChatContainer = () => {
   const [imageUrl, setImageUrl] = useState("");
   const [sending, setSending] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [activeMenu, setActiveMenu] = useState(null);
+  const [editingMessage, setEditingMessage] = useState(null);
+  const [editedText, setEditedText] = useState("");
+
+
 
   const bottomRef = useRef(null);
   const emojiPickerRef = useRef(null);
@@ -96,6 +101,7 @@ const ChatContainer = () => {
     emitTyping();
   };
 
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
 
@@ -158,7 +164,20 @@ const ChatContainer = () => {
         onBack={() => setSelectedUser(null)}
       />
 
-      <MessageList messages={messages} myId={myId} selectedUser={selectedUser} />
+      <MessageList
+        messages={messages}
+        selectedUser={selectedUser}
+        myId={myId}
+
+        activeMenu={activeMenu}
+        setActiveMenu={setActiveMenu}
+
+        editingMessage={editingMessage}
+        setEditingMessage={setEditingMessage}
+
+        editedText={editedText}
+        setEditedText={setEditedText}
+      />
 
       <MessageComposer
         newMessage={newMessage}
@@ -182,8 +201,8 @@ const ChatHeader = ({ selectedUser, isOnline, isTyping, onBack }) => {
   const statusColor = isTyping
     ? "text-violet-400"
     : isOnline
-    ? "text-green-400"
-    : "text-white/50";
+      ? "text-green-400"
+      : "text-white/50";
 
   return (
     <div className="flex items-center gap-3 px-3 sm:px-4 py-3 border-b border-white/10 bg-black/40">
@@ -212,7 +231,23 @@ const ChatHeader = ({ selectedUser, isOnline, isTyping, onBack }) => {
   );
 };
 
-const MessageList = ({ messages, myId, selectedUser }) => {
+const MessageList = ({
+  messages,
+  selectedUser,
+  myId,
+
+  activeMenu,
+  setActiveMenu,
+
+  editingMessage,
+  setEditingMessage,
+
+  editedText,
+  setEditedText,
+
+  editMessage,
+  deleteMessage,
+}) => {
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -228,6 +263,15 @@ const MessageList = ({ messages, myId, selectedUser }) => {
             message={message}
             myId={myId}
             selectedUser={selectedUser}
+
+            activeMenu={activeMenu}
+            setActiveMenu={setActiveMenu}
+
+            editingMessage={editingMessage}
+            setEditingMessage={setEditingMessage}
+
+            editedText={editedText}
+            setEditedText={setEditedText}
           />
         ))
       ) : (
@@ -240,6 +284,8 @@ const MessageList = ({ messages, myId, selectedUser }) => {
 };
 
 const MessageBubble = ({ message, myId, selectedUser }) => {
+  const { editMessage, deleteMessage } = useChat();
+
   const senderId =
     typeof message.senderId === "object"
       ? message.senderId?._id?.toString()
@@ -247,12 +293,39 @@ const MessageBubble = ({ message, myId, selectedUser }) => {
 
   const isMine = senderId === myId;
 
+  const [showMenu, setShowMenu] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedText, setEditedText] = useState(message.text || "");
+
+  const handleSave = async () => {
+    if (!editedText.trim()) return;
+
+    await editMessage(message._id, editedText);
+
+    setIsEditing(false);
+    setShowMenu(false);
+  };
+
+  const handleDelete = async () => {
+    const confirmDelete = window.confirm(
+      "Delete this message?"
+    );
+
+    if (!confirmDelete) return;
+
+    await deleteMessage(message._id);
+
+    setShowMenu(false);
+  };
+
   return (
-    <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`max-w-[80%] sm:max-w-[75%] flex flex-col ${
-          isMine ? "items-end" : "items-start"
+    <div
+      className={`flex ${isMine ? "justify-end" : "justify-start"
         }`}
+    >
+      <div
+        className={`max-w-[80%] sm:max-w-[75%] flex flex-col ${isMine ? "items-end" : "items-start"
+          }`}
       >
         {!isMine && (
           <img
@@ -263,13 +336,46 @@ const MessageBubble = ({ message, myId, selectedUser }) => {
         )}
 
         <div
-          className={`rounded-2xl p-3 shadow ${
-            isMine
+          className={`relative rounded-2xl p-3 shadow ${isMine
               ? "bg-violet-600 text-white rounded-br-sm"
               : "bg-white/10 text-white rounded-bl-sm"
-          }`}
+            }`}
         >
-          {message.image && (
+          {/* Three Dot Menu */}
+          {isMine && !message.deleted && (
+            <div className="absolute top-2 right-2">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="text-white/60 hover:text-white text-lg"
+              >
+                ⋮
+              </button>
+
+              {showMenu && (
+                <div className="absolute right-0 mt-2 w-32 rounded-lg bg-[#282142] border border-white/10 shadow-lg overflow-hidden z-50">
+                  <button
+                    onClick={() => {
+                      setIsEditing(true);
+                      setShowMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-white/10"
+                  >
+                    ✏ Edit
+                  </button>
+
+                  <button
+                    onClick={handleDelete}
+                    className="w-full text-left px-4 py-2 text-red-400 hover:bg-white/10"
+                  >
+                    🗑 Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Image */}
+          {!message.deleted && message.image && (
             <img
               src={message.image}
               alt="Shared attachment"
@@ -277,15 +383,57 @@ const MessageBubble = ({ message, myId, selectedUser }) => {
             />
           )}
 
-          {message.text && (
-            <p className="text-sm whitespace-pre-wrap break-words">
-              {message.text}
+          {/* Deleted */}
+          {message.deleted ? (
+            <p className="italic text-sm text-white/50">
+              🚫 This message was deleted
             </p>
+          ) : isEditing ? (
+            <div className="flex flex-col gap-2 mt-2">
+              <input
+                value={editedText}
+                onChange={(e) =>
+                  setEditedText(e.target.value)
+                }
+                className="bg-white/10 rounded px-2 py-1 outline-none text-sm"
+              />
+
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="text-xs px-3 py-1 rounded bg-gray-600"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={handleSave}
+                  className="text-xs px-3 py-1 rounded bg-green-600"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {message.text && (
+                <p className="text-sm whitespace-pre-wrap break-words">
+                  {message.text}
+                </p>
+              )}
+
+              {message.edited && (
+                <p className="text-[10px] italic text-white/60 mt-1">
+                  Edited
+                </p>
+              )}
+            </>
           )}
         </div>
 
         <span className="mt-1 text-[11px] text-white/70">
           {formatMessageTime(message.createdAt)}
+
           {isMine && (
             <span className="ml-1 text-white font-semibold">
               {message.seen ? "✓✓" : "✓"}
