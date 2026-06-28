@@ -240,3 +240,60 @@ export const editMessage = async (req, res) => {
         });
     }
 };
+
+
+export const deleteMessage = async (req, res) => {
+    try {
+        const { id: messageId } = req.params;
+        const userId = req.user._id;
+
+        const message = await Message.findById(messageId);
+
+        if (!message) {
+            return res.status(404).json({
+                success: false,
+                message: "Message not found",
+            });
+        }
+
+        // Only sender can delete
+        if (message.senderId.toString() !== userId.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: "You are not allowed to delete this message",
+            });
+        }
+
+        // Already deleted
+        if (message.deleted) {
+            return res.status(400).json({
+                success: false,
+                message: "Message is already deleted",
+            });
+        }
+
+        // Soft Delete
+        message.text = "This message was deleted";
+        message.image = "";
+        message.deleted = true;
+        message.deletedAt = new Date();
+
+        await message.save();
+
+        // Notify receiver in real time
+        emitToUser(message.receiverId, "messageDeleted", message);
+
+        return res.status(200).json({
+            success: true,
+            message,
+        });
+
+    } catch (error) {
+        console.error("deleteMessage:", error.message);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal Server Error",
+        });
+    }
+};

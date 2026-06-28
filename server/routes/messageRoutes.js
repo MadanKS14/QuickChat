@@ -6,6 +6,7 @@ import {
   sendMessage,
   getUsersForSidebar,
   editMessage,
+  deleteMessage,
 } from "../controllers/messageController.js";
 
 const messageRouter = express.Router();
@@ -15,5 +16,6 @@ messageRouter.post("/send/:id", protectRoute, sendMessage);
 messageRouter.get("/:id", protectRoute, getMessages);
 messageRouter.put("/seen/:id", protectRoute, markMessagesAsSeen);
 messageRouter.put("/edit/:id",protectRoute,editMessage);
+messageRouter.delete("/delete/:id",protectRoute,deleteMessage);
 
 export default messageRouter;
