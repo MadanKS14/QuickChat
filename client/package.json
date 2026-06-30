@@ -1,14 +1,19 @@
 {
   "name": "client",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "QuickChat - Real-Time Chat Application built with the MERN Stack",
+  "author": "Madan K S",
+  "license": "MIT",
   "type": "module",
+
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint ."
   },
+
   "dependencies": {
     "@tailwindcss/vite": "^4.1.12",
     "axios": "^1.11.0",
@@ -22,6 +27,7 @@
     "tailwindcss": "^4.1.12",
     "uuid": "^11.1.0"
   },
+
   "devDependencies": {
     "@eslint/js": "^9.33.0",
     "@types/react": "^19.1.10",
