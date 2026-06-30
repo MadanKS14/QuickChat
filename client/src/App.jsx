@@ -1,12 +1,11 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-
 import assets from "./assets/assets";
-
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import ProfilePage from "./pages/ProfilePage";
+import SettingsPage from "./pages/SettingsPage";
 
 import { useAuth } from "./context/authContext";
 
@@ -47,6 +46,17 @@ const App = () => {
           element={
             isAuthenticated ? (
               <ProfilePage />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            authUser ? (
+              <SettingsPage />
             ) : (
               <Navigate to="/login" replace />
             )

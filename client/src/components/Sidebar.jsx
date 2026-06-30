@@ -84,6 +84,10 @@ const Sidebar = () => {
           navigate("/profile");
           setShowMenu(false);
         }}
+        onOpenSettings={() => {
+          navigate("/settings");
+          setShowMenu(false);
+        }}
         onLogout={() => {
           logout();
           setShowMenu(false);
@@ -163,6 +167,7 @@ const SidebarHeader = ({
   showMenu,
   onToggleMenu,
   onEditProfile,
+  onOpenSettings,
   onLogout,
   menuRef,
 }) => (
@@ -190,17 +195,22 @@ const SidebarHeader = ({
       {showMenu && (
         <div className="absolute right-0 top-12 z-50 w-44 overflow-hidden rounded-xl border border-white/10 bg-[#282142] shadow-xl">
           <button
-            type="button"
             onClick={onEditProfile}
-            className="w-full px-4 py-3 text-left text-sm transition hover:bg-white/10"
+            className="w-full text-left px-4 py-3 text-sm hover:bg-white/10 transition"
           >
             Edit Profile
           </button>
 
           <button
-            type="button"
+            onClick={onOpenSettings}
+            className="w-full text-left px-4 py-3 text-sm hover:bg-white/10 transition"
+          >
+            Settings
+          </button>
+
+          <button
             onClick={onLogout}
-            className="w-full px-4 py-3 text-left text-sm transition hover:bg-white/10"
+            className="w-full text-left px-4 py-3 text-sm hover:bg-white/10 transition text-red-400"
           >
             Logout
           </button>
@@ -234,10 +244,9 @@ const PresenceAvatar = ({ user, isOnline }) => (
 );
 
 const listItemClasses = (isSelected) =>
-  `mb-1 flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200 ${
-    isSelected
-      ? "border-violet-500/40 bg-violet-500/20"
-      : "border-transparent hover:bg-white/5"
+  `mb-1 flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200 ${isSelected
+    ? "border-violet-500/40 bg-violet-500/20"
+    : "border-transparent hover:bg-white/5"
   }`;
 
 const ConversationItem = ({
