@@ -12,43 +12,97 @@ import messageRouter from "./routes/messageRoutes.js";
 import conversationRouter from "./routes/conversationRoutes.js";
 
 const app = express();
-
 const server = http.createServer(app);
 
-const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+// ================================
+// Environment
+// ================================
+
+const PORT = process.env.PORT || 5000;
+
+const CLIENT_URL =
+  process.env.CLIENT_URL || "http://localhost:5173";
+
+// ================================
+// Initialize Socket.IO
+// ================================
 
 initializeSocket(server);
 
-// Middleware
-app.use(express.json({ limit: "4mb" }));
+// ================================
+// Middlewares
+// ================================
 
 app.use(
-    cors({
-        origin: clientUrl,
-        credentials: true,
-    })
+  cors({
+    origin: CLIENT_URL,
+    credentials: true,
+  })
 );
 
-// Routes
+app.use(
+  express.json({
+    limit: "4mb",
+  })
+);
+
+// ================================
+// Health Check Route
+// ================================
+
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "QuickChat API is running 🚀",
+  });
+});
+
+// ================================
+// API Routes
+// ================================
+
 app.use("/api/auth", authRouter);
+
 app.use("/api/users", userRouter);
+
 app.use("/api/messages", messageRouter);
+
 app.use("/api/conversations", conversationRouter);
-app.use("/api/messages", messageRouter);
 
-// Server
+// ================================
+// 404 Handler
+// ================================
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "API Route Not Found",
+  });
+});
+
+// ================================
+// Start Server
+// ================================
+
 const startServer = async () => {
-    try {
-        await connectDB();
+  try {
+    await connectDB();
 
-        const PORT = process.env.PORT || 5000;
+    server.listen(PORT, () => {
+      console.log(`
+=========================================
+🚀 QuickChat Server Started Successfully
+🌐 Port      : ${PORT}
+🖥️ Client    : ${CLIENT_URL}
+=========================================
+`);
+    });
+  } catch (error) {
+    console.error("❌ Failed to start server");
+    console.error(error);
 
-        server.listen(PORT, () => {
-            console.log(`🚀 Server running on port ${PORT}`);
-        });
-    } catch (error) {
-        console.error("Failed to start server:", error.message);
-    }
+    process.exit(1);
+  }
 };
 
 startServer();
